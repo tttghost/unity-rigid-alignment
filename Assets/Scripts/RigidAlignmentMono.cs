@@ -11,6 +11,8 @@ public class RigidAlignmentMono : MonoBehaviour
 
     private List<Vector3> leftPoints = new();
     private List<Vector3> rightPoints = new();
+    private List<GameObject> leftMarkers = new();
+    private List<GameObject> rightMarkers = new();
 
     private RigidAlignment solver = new RigidAlignment();
 
@@ -90,23 +92,55 @@ public class RigidAlignmentMono : MonoBehaviour
 
         if (Physics.Raycast(ray, out RaycastHit hit))
         {
+            // 기존 마커 클릭 → 삭제
+            int leftIdx = leftMarkers.IndexOf(hit.transform.gameObject);
+            if (leftIdx >= 0)
+            {
+                Destroy(leftMarkers[leftIdx]);
+                leftMarkers.RemoveAt(leftIdx);
+                leftPoints.RemoveAt(leftIdx);
+                TryAlign();
+                return;
+            }
+
+            int rightIdx = rightMarkers.IndexOf(hit.transform.gameObject);
+            if (rightIdx >= 0)
+            {
+                Destroy(rightMarkers[rightIdx]);
+                rightMarkers.RemoveAt(rightIdx);
+                rightPoints.RemoveAt(rightIdx);
+                TryAlign();
+                return;
+            }
+
+            // 큐브 클릭 → 새 마커 생성
             Vector3 p = hit.point;
 
             if (hit.transform == leftCube)
             {
                 var marker = Instantiate(markerPrefab, p, Quaternion.identity, leftCube);
                 CounterScaleMarker(marker.transform, leftCube);
-                leftPoints.Add(p); // 월드 좌표 (목표 위치)
+                EnableMarkerCollider(marker);
+                leftMarkers.Add(marker);
+                leftPoints.Add(p);
             }
             else if (hit.transform == rightCube)
             {
                 var marker = Instantiate(markerPrefab, p, Quaternion.identity, rightCube);
                 CounterScaleMarker(marker.transform, rightCube);
-                rightPoints.Add(rightCube.InverseTransformPoint(p)); // 로컬 좌표로 저장
+                EnableMarkerCollider(marker);
+                rightMarkers.Add(marker);
+                rightPoints.Add(rightCube.InverseTransformPoint(p));
             }
 
             TryAlign();
         }
+    }
+
+    void EnableMarkerCollider(GameObject marker)
+    {
+        var col = marker.GetComponent<Collider>();
+        if (col != null) col.enabled = true;
     }
     void TryAlign()
     {
@@ -123,6 +157,8 @@ public class RigidAlignmentMono : MonoBehaviour
     {
         leftPoints.Clear();
         rightPoints.Clear();
+        leftMarkers.Clear();
+        rightMarkers.Clear();
 
         // RightCube 원위치 복원
         rightCube.position = _rightCubeInitPos;
