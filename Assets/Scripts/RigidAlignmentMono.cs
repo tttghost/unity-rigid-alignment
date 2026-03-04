@@ -19,22 +19,55 @@ public class RigidAlignmentMono : MonoBehaviour
     private GameObject _previewMarker;
     private GameObject _clone;
 
+    // ─── 컬러 페어링 ───
+    private static readonly Color[] PairColors = new[]
+    {
+        Color.red,
+        Color.blue,
+        Color.green,
+        Color.yellow,
+        Color.cyan,
+        Color.magenta,
+        new Color(1f, 0.5f, 0f),   // orange
+        new Color(0.5f, 0f, 1f),   // purple
+    };
+
+    // ─── 드래그 상태 ───
+    private const float DragThreshold = 5f; // 픽셀
+    private GameObject _dragMarker;
+    private Vector3 _dragStartWorldPos;
+    private Vector3 _dragStartMousePos;
+    private Transform _dragOwnerCube; // 이 마커가 속한 큐브
+    private bool _isDragging;
+
     void Update()
     {
         UpdatePreviewMarker();
 
         if (Input.GetMouseButtonDown(0))
-        {
-            HandleClick();
-        }
+            OnMouseDown();
+
+        if (Input.GetMouseButton(0) && _dragMarker != null)
+            OnMouseDrag();
+
+        if (Input.GetMouseButtonUp(0) && _dragMarker != null)
+            OnMouseUp();
+
         if (Input.GetKeyDown(KeyCode.Alpha1))
-        {
             ResetAlignment();
-        }
     }
+
+    // ─── 프리뷰 마커 ───
 
     void UpdatePreviewMarker()
     {
+        // 드래그 중이면 프리뷰 숨김
+        if (_dragMarker != null)
+        {
+            if (_previewMarker != null) _previewMarker.SetActive(false);
+            return;
+        }
+
         Ray ray = cam.ScreenPointToRay(Input.mousePosition);
 
         if (Physics.Raycast(ray, out RaycastHit hit) &&
@@ -56,6 +89,13 @@ public class RigidAlignmentMono : MonoBehaviour
         }
     }
 
+    void SetMarkerColor(GameObject marker, Color color)
+    {
+        var renderer = marker.GetComponent<Renderer>();
+        if (renderer != null)
+            renderer.material.color = color;
+    }
+
     void SetMarkerAlpha(GameObject marker, float alpha)
     {
         var renderer = marker.GetComponent<Renderer>();
@@ -68,53 +108,168 @@ public class RigidAlignmentMono : MonoBehaviour
         }
     }
 
-    void HandleClick()
+    Color GetPairColor(int index) => PairColors[index % PairColors.Length];
+
+    // ─── 마우스 입력 ───
+
+    void OnMouseDown()
     {
+        _isDragging = false;
+        _dragStartMousePos = Input.mousePosition;
+
         Ray ray = cam.ScreenPointToRay(Input.mousePosition);
+        if (!Physics.Raycast(ray, out RaycastHit hit)) return;
 
-        if (Physics.Raycast(ray, out RaycastHit hit))
+        // 마커를 눌렀으면 드래그 준비
+        int li = leftMarkers.IndexOf(hit.transform.gameObject);
+        if (li >= 0)
         {
-            // 기존 마커 클릭 → 삭제
-            int leftIdx = leftMarkers.IndexOf(hit.transform.gameObject);
-            if (leftIdx >= 0)
-            {
-                Destroy(leftMarkers[leftIdx]);
-                leftMarkers.RemoveAt(leftIdx);
-                leftPoints.RemoveAt(leftIdx);
-                TryAlign();
-                return;
-            }
+            _dragMarker = leftMarkers[li];
+            _dragStartWorldPos = _dragMarker.transform.position;
+            _dragOwnerCube = leftCube;
+            return;
+        }
 
-            int rightIdx = rightMarkers.IndexOf(hit.transform.gameObject);
-            if (rightIdx >= 0)
-            {
-                Destroy(rightMarkers[rightIdx]);
-                rightMarkers.RemoveAt(rightIdx);
-                rightPoints.RemoveAt(rightIdx);
-                TryAlign();
-                return;
-            }
+        int ri = rightMarkers.IndexOf(hit.transform.gameObject);
+        if (ri >= 0)
+        {
+            _dragMarker = rightMarkers[ri];
+            _dragStartWorldPos = _dragMarker.transform.position;
+            _dragOwnerCube = rightCube;
+            return;
+        }
 
-            // 큐브 클릭 → 새 마커 생성
-            Vector3 p = hit.point;
-
-            if (hit.transform == leftCube)
-            {
-                var marker = Instantiate(markerPrefab, p, Quaternion.identity);
-                EnableMarkerCollider(marker);
-                leftMarkers.Add(marker);
-                leftPoints.Add(p);
-            }
-            else if (hit.transform == rightCube)
-            {
-                var marker = Instantiate(markerPrefab, p, Quaternion.identity);
-                EnableMarkerCollider(marker);
-                rightMarkers.Add(marker);
-                rightPoints.Add(rightCube.InverseTransformPoint(p));
-            }
-
+        // 큐브 클릭 → 새 마커 생성
+        if (hit.transform == leftCube)
+        {
+            var marker = Instantiate(markerPrefab, hit.point, Quaternion.identity);
+            EnableMarkerCollider(marker);
+            leftMarkers.Add(marker);
+            leftPoints.Add(hit.point);
+            int idx = leftMarkers.Count - 1;
+            SetMarkerColor(marker, GetPairColor(idx));
+            SyncPairColor(idx);
             TryAlign();
         }
+        else if (hit.transform == rightCube)
+        {
+            var marker = Instantiate(markerPrefab, hit.point, Quaternion.identity);
+            EnableMarkerCollider(marker);
+            rightMarkers.Add(marker);
+            rightPoints.Add(rightCube.InverseTransformPoint(hit.point));
+            int idx = rightMarkers.Count - 1;
+            SetMarkerColor(marker, GetPairColor(idx));
+            SyncPairColor(idx);
+            TryAlign();
+        }
+    }
+
+    void OnMouseDrag()
+    {
+        // 드래그 임계값 체크
+        if (!_isDragging)
+        {
+            if (Vector3.Distance(Input.mousePosition, _dragStartMousePos) < DragThreshold)
+                return;
+            _isDragging = true;
+            // 드래그 시작 시 마커 콜라이더 끄기 (큐브 표면 레이캐스트 방해 방지)
+            var dragCol = _dragMarker.GetComponent<Collider>();
+            if (dragCol != null) dragCol.enabled = false;
+        }
+
+        // 큐브 표면 위로 마커 이동
+        Ray ray = cam.ScreenPointToRay(Input.mousePosition);
+        if (Physics.Raycast(ray, out RaycastHit hit) && hit.transform == _dragOwnerCube)
+        {
+            _dragMarker.transform.position = hit.point;
+        }
+    }
+
+    void OnMouseUp()
+    {
+        if (!_isDragging)
+        {
+            // 드래그 아닌 클릭 → 삭제
+            DeleteMarker(_dragMarker);
+            _dragMarker = null;
+            _dragOwnerCube = null;
+            return;
+        }
+
+        // 드래그 끝: 큐브 표면 위인지 확인
+        Ray ray = cam.ScreenPointToRay(Input.mousePosition);
+        bool onSurface = Physics.Raycast(ray, out RaycastHit hit) && hit.transform == _dragOwnerCube;
+
+        if (onSurface)
+        {
+            // 새 위치 확정
+            _dragMarker.transform.position = hit.point;
+            UpdateMarkerPoint(_dragMarker, hit.point);
+        }
+        else
+        {
+            // 큐브 밖 → 원위치 복원
+            _dragMarker.transform.position = _dragStartWorldPos;
+        }
+
+        // 콜라이더 복원
+        EnableMarkerCollider(_dragMarker);
+
+        _dragMarker = null;
+        _dragOwnerCube = null;
+        _isDragging = false;
+
+        TryAlign();
+    }
+
+    // ─── 마커 관리 ───
+
+    void UpdateMarkerPoint(GameObject marker, Vector3 worldPos)
+    {
+        int li = leftMarkers.IndexOf(marker);
+        if (li >= 0) { leftPoints[li] = worldPos; return; }
+
+        int ri = rightMarkers.IndexOf(marker);
+        if (ri >= 0) { rightPoints[ri] = rightCube.InverseTransformPoint(worldPos); }
+    }
+
+    void DeleteMarker(GameObject marker)
+    {
+        int li = leftMarkers.IndexOf(marker);
+        if (li >= 0)
+        {
+            Destroy(leftMarkers[li]);
+            leftMarkers.RemoveAt(li);
+            leftPoints.RemoveAt(li);
+            RefreshAllColors();
+            TryAlign();
+            return;
+        }
+
+        int ri = rightMarkers.IndexOf(marker);
+        if (ri >= 0)
+        {
+            Destroy(rightMarkers[ri]);
+            rightMarkers.RemoveAt(ri);
+            rightPoints.RemoveAt(ri);
+            RefreshAllColors();
+            TryAlign();
+        }
+    }
+
+    void SyncPairColor(int pairIndex)
+    {
+        Color c = GetPairColor(pairIndex);
+        if (pairIndex < leftMarkers.Count) SetMarkerColor(leftMarkers[pairIndex], c);
+        if (pairIndex < rightMarkers.Count) SetMarkerColor(rightMarkers[pairIndex], c);
+    }
+
+    void RefreshAllColors()
+    {
+        for (int i = 0; i < leftMarkers.Count; i++)
+            SetMarkerColor(leftMarkers[i], GetPairColor(i));
+        for (int i = 0; i < rightMarkers.Count; i++)
+            SetMarkerColor(rightMarkers[i], GetPairColor(i));
     }
 
     void EnableMarkerCollider(GameObject marker)
@@ -122,6 +277,8 @@ public class RigidAlignmentMono : MonoBehaviour
         var col = marker.GetComponent<Collider>();
         if (col != null) col.enabled = true;
     }
+
+    // ─── 정합 ───
 
     void TryAlign()
     {
@@ -164,6 +321,10 @@ public class RigidAlignmentMono : MonoBehaviour
 
     public void ResetAlignment()
     {
+        // 마커 전부 삭제
+        foreach (var m in leftMarkers) Destroy(m);
+        foreach (var m in rightMarkers) Destroy(m);
+
         leftPoints.Clear();
         rightPoints.Clear();
         leftMarkers.Clear();
@@ -176,9 +337,10 @@ public class RigidAlignmentMono : MonoBehaviour
             _clone = null;
         }
 
-        // 마커 전부 삭제
-        foreach (var m in leftMarkers) Destroy(m);
-        foreach (var m in rightMarkers) Destroy(m);
+        // 드래그 상태 초기화
+        _dragMarker = null;
+        _dragOwnerCube = null;
+        _isDragging = false;
 
         if (_previewMarker != null)
         {
