@@ -73,6 +73,17 @@ public class RigidAlignmentMono : MonoBehaviour
             mat.color = color;
         }
     }
+    void CounterScaleMarker(Transform marker, Transform parent)
+    {
+        Vector3 originalScale = markerPrefab.transform.localScale;
+        Vector3 parentScale = parent.lossyScale;
+        marker.localScale = new Vector3(
+            originalScale.x / parentScale.x,
+            originalScale.y / parentScale.y,
+            originalScale.z / parentScale.z
+        );
+    }
+
     void HandleClick()
     {
         Ray ray = cam.ScreenPointToRay(Input.mousePosition);
@@ -84,11 +95,13 @@ public class RigidAlignmentMono : MonoBehaviour
             if (hit.transform == leftCube)
             {
                 var marker = Instantiate(markerPrefab, p, Quaternion.identity, leftCube);
+                CounterScaleMarker(marker.transform, leftCube);
                 leftPoints.Add(p); // 월드 좌표 (목표 위치)
             }
             else if (hit.transform == rightCube)
             {
                 var marker = Instantiate(markerPrefab, p, Quaternion.identity, rightCube);
+                CounterScaleMarker(marker.transform, rightCube);
                 rightPoints.Add(rightCube.InverseTransformPoint(p)); // 로컬 좌표로 저장
             }
 
@@ -99,10 +112,10 @@ public class RigidAlignmentMono : MonoBehaviour
     {
         if (leftPoints.Count >= 3 && rightPoints.Count >= 3)
         {
-            if (solver.Solve(leftPoints, rightPoints, out var pos, out var rot))
+            if (solver.Solve(leftPoints, rightPoints, rightCube.localScale, out var pos, out var rot))
             {
-                rightCube.position = pos;
                 rightCube.rotation = rot;
+                rightCube.position = pos;
             }
         }
     }
