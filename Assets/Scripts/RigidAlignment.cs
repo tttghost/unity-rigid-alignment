@@ -4,56 +4,157 @@ using UnityEngine;
 /// <summary>
 /// N점(N≥3) Kabsch 알고리즘 기반 rigid alignment.
 /// SVD를 통해 최소자승 최적 회전·이동을 계산한다.
+/// 아웃라이어 자동 제거 (σ 기반 반복 필터링)
 /// </summary>
 public class RigidAlignment
 {
+    /// <summary>
+    /// 아웃라이어 제거 후 정합. outlierIndices에 제외된 페어 인덱스 반환.
+    /// </summary>
     public bool Solve(
-        List<Vector3> leftPoints,
-        List<Vector3> rightPoints,
-        Vector3 rightScale,
+        List<Vector3> realPoints,
+        List<Vector3> virtualPoints,
+        Vector3 virtualScale,
+        out Vector3 position,
+        out Quaternion rotation,
+        out List<int> outlierIndices,
+        float sigmaThreshold = 2f,
+        int maxIterations = 3)
+    {
+        position = Vector3.zero;
+        rotation = Quaternion.identity;
+        outlierIndices = new List<int>();
+
+        int n = Mathf.Min(realPoints.Count, virtualPoints.Count);
+        if (n < 3) return false;
+
+        // 원본 인덱스 추적용 리스트
+        var activeIndices = new List<int>();
+        for (int i = 0; i < n; i++) activeIndices.Add(i);
+
+        var realArr = new List<Vector3>(realPoints.GetRange(0, n));
+        var virtualArr = new List<Vector3>();
+        for (int i = 0; i < n; i++)
+            virtualArr.Add(Vector3.Scale(virtualPoints[i], virtualScale));
+
+        for (int iter = 0; iter < maxIterations; iter++)
+        {
+            if (activeIndices.Count < 3) break;
+
+            // Kabsch 정합
+            if (!SolveCore(realArr, virtualArr, activeIndices, out position, out rotation))
+                return false;
+
+            // 4점 미만이면 아웃라이어 제거 불가
+            if (activeIndices.Count <= 3) break;
+
+            // 각 점의 잔차 계산
+            var residuals = new List<float>();
+            foreach (int idx in activeIndices)
+            {
+                Vector3 transformed = rotation * virtualArr[idx] + position;
+                float residual = Vector3.Distance(realArr[idx], transformed);
+                residuals.Add(residual);
+            }
+
+            // 평균, 표준편차
+            float mean = 0f;
+            foreach (float r in residuals) mean += r;
+            mean /= residuals.Count;
+
+            float variance = 0f;
+            foreach (float r in residuals) variance += (r - mean) * (r - mean);
+            float sigma = Mathf.Sqrt(variance / residuals.Count);
+
+            // σ가 매우 작으면 (거의 완벽한 정합) 종료
+            if (sigma < 1e-6f) break;
+
+            // threshold 초과 점 제거
+            float threshold = mean + sigmaThreshold * sigma;
+            var newActive = new List<int>();
+            bool removed = false;
+
+            for (int i = 0; i < activeIndices.Count; i++)
+            {
+                if (residuals[i] <= threshold)
+                    newActive.Add(activeIndices[i]);
+                else
+                    removed = true;
+            }
+
+            if (!removed || newActive.Count < 3) break;
+
+            activeIndices = newActive;
+        }
+
+        // 최종 정합
+        if (activeIndices.Count < 3) return false;
+        SolveCore(realArr, virtualArr, activeIndices, out position, out rotation);
+
+        // 아웃라이어 인덱스 수집
+        var activeSet = new HashSet<int>(activeIndices);
+        for (int i = 0; i < n; i++)
+        {
+            if (!activeSet.Contains(i))
+                outlierIndices.Add(i);
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// 하위호환: 아웃라이어 정보 없이 호출
+    /// </summary>
+    public bool Solve(
+        List<Vector3> realPoints,
+        List<Vector3> virtualPoints,
+        Vector3 virtualScale,
+        out Vector3 position,
+        out Quaternion rotation)
+    {
+        return Solve(realPoints, virtualPoints, virtualScale, out position, out rotation, out _);
+    }
+
+    /// <summary>
+    /// activeIndices 부분집합으로 Kabsch 정합
+    /// </summary>
+    bool SolveCore(
+        List<Vector3> real,
+        List<Vector3> virt,
+        List<int> indices,
         out Vector3 position,
         out Quaternion rotation)
     {
         position = Vector3.zero;
         rotation = Quaternion.identity;
 
-        int n = Mathf.Min(leftPoints.Count, rightPoints.Count);
+        int n = indices.Count;
         if (n < 3) return false;
 
-        // 1. 스케일 적용
-        var left = new Vector3[n];
-        var right = new Vector3[n];
-        for (int i = 0; i < n; i++)
-        {
-            left[i] = leftPoints[i];
-            right[i] = Vector3.Scale(rightPoints[i], rightScale);
-        }
-
-        // 2. 무게중심
+        // 무게중심
         Vector3 centL = Vector3.zero, centR = Vector3.zero;
-        for (int i = 0; i < n; i++)
+        foreach (int i in indices)
         {
-            centL += left[i];
-            centR += right[i];
+            centL += real[i];
+            centR += virt[i];
         }
         centL /= n;
         centR /= n;
 
-        // 3. 교차공분산 행렬 H = Σ (l_i - centL)(r_i - centR)^T
+        // 교차공분산 행렬 H
         float[,] H = new float[3, 3];
-        for (int i = 0; i < n; i++)
+        foreach (int i in indices)
         {
-            Vector3 l = left[i] - centL;
-            Vector3 r = right[i] - centR;
+            Vector3 l = real[i] - centL;
+            Vector3 r = virt[i] - centR;
             H[0, 0] += l.x * r.x; H[0, 1] += l.x * r.y; H[0, 2] += l.x * r.z;
             H[1, 0] += l.y * r.x; H[1, 1] += l.y * r.y; H[1, 2] += l.y * r.z;
             H[2, 0] += l.z * r.x; H[2, 1] += l.z * r.y; H[2, 2] += l.z * r.z;
         }
 
-        // 4. SVD → H = U · diag(S) · V^T
+        // SVD
         SVD3x3(H, out var U, out var S, out var V);
 
-        // 5. 반사 보정: det(U)·det(V) < 0 이면 마지막 열 뒤집기
         if (Det(U) * Det(V) < 0)
         {
             U[0, 2] = -U[0, 2];
@@ -61,10 +162,7 @@ public class RigidAlignment
             U[2, 2] = -U[2, 2];
         }
 
-        // 6. R = V · U^T
         float[,] R = Mul(V, Transpose(U));
-
-        // 7. 결과
         rotation = MatrixToQuaternion(R);
         position = centL - rotation * centR;
         return true;

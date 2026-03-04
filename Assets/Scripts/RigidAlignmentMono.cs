@@ -313,12 +313,32 @@ public class RigidAlignmentMono : MonoBehaviour
     {
         if (_realPoints.Count >= 3 && _virtualPoints.Count >= 3)
         {
-            if (_solver.Solve(_realPoints, _virtualPoints, _virtualModel.localScale, out var pos, out var rot))
+            if (_solver.Solve(_realPoints, _virtualPoints, _virtualModel.localScale,
+                out var pos, out var rot, out var outliers))
             {
                 EnsureClone();
                 _clone.SetActive(true);
                 _clone.transform.rotation = rot;
                 _clone.transform.position = pos;
+
+                // 아웃라이어 마커 시각화: 반투명 회색 처리
+                var outlierSet = new HashSet<int>(outliers);
+                int pairCount = Mathf.Min(_realMarkers.Count, _virtualMarkers.Count);
+
+                for (int i = 0; i < pairCount; i++)
+                {
+                    if (outlierSet.Contains(i))
+                    {
+                        SetMarkerColor(_realMarkers[i], new Color(0.5f, 0.5f, 0.5f, 0.4f));
+                        SetMarkerColor(_virtualMarkers[i], new Color(0.5f, 0.5f, 0.5f, 0.4f));
+                    }
+                    else
+                    {
+                        Color c = GetPairColor(i);
+                        SetMarkerColor(_realMarkers[i], c);
+                        SetMarkerColor(_virtualMarkers[i], c);
+                    }
+                }
             }
         }
         else
@@ -326,6 +346,9 @@ public class RigidAlignmentMono : MonoBehaviour
             // 3쌍 미만이면 Clone 숨김
             if (_clone != null)
                 _clone.SetActive(false);
+
+            // 색상 복원
+            RefreshAllColors();
         }
     }
 
