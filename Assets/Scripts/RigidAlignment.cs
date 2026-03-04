@@ -262,7 +262,7 @@ public class RigidAlignment
             U[2, 2] = -U[2, 2];
         }
 
-        float[,] R = Mul(V, Transpose(U));
+        float[,] R = Mul(U, Transpose(V));
         rotation = MatrixToQuaternion(R);
         position = centL - rotation * centR;
         return true;
