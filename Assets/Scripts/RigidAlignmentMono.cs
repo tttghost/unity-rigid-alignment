@@ -9,6 +9,7 @@ public class RigidAlignmentMono : MonoBehaviour
     [SerializeField] private GameObject _markerPrefab;
     [SerializeField] private Material _cloneMaterial;
     [SerializeField] private TMP_Text _rmseText;
+    [SerializeField] private Material _residualLabelMaterial;
 
     private List<Vector3> _realPoints = new();
     private List<Vector3> _virtualPoints = new();
@@ -410,6 +411,10 @@ public class RigidAlignmentMono : MonoBehaviour
         tmp.fontSize = 2f;
         tmp.alignment = TextAlignmentOptions.Center;
         tmp.sortingOrder = 10;
+
+        // Overlay 머티리얼 적용 (오브젝트에 가려지지 않도록)
+        if (_residualLabelMaterial != null)
+            tmp.fontSharedMaterial = _residualLabelMaterial;
 
         if (isOutlier)
             tmp.color = new Color(0.5f, 0.5f, 0.5f, 0.6f);
