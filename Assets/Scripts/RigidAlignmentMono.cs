@@ -78,18 +78,25 @@ public class RigidAlignmentMono : MonoBehaviour
     private bool _dragIsVirtual; // 드래그 중인 마커가 virtual쪽인지
     private bool _isDragging;
 
-    // ─── 잔차 라벨 고정 크기 ───
+    // ─── 고정 크기 (카메라 거리 무관) ───
     private const float LabelRefDistance = 5f;
     private const float LabelBaseScale = 1f;
+    private const float MarkerRefDistance = 5f;
+    private const float MarkerBaseScale = 1f;
 
     void LateUpdate()
     {
+        if (_cam == null) return;
+
         // 잔차 라벨 빌보드 + 카메라 거리 무관 고정 크기
-        if (_cam != null)
-        {
-            UpdateLabelTransforms(_realResidualLabels);
-            UpdateLabelTransforms(_virtualResidualLabels);
-        }
+        UpdateLabelTransforms(_realResidualLabels);
+        UpdateLabelTransforms(_virtualResidualLabels);
+
+        // 마커 카메라 거리 무관 고정 크기
+        UpdateMarkerScales(_realMarkers);
+        UpdateMarkerScales(_virtualMarkers);
+        if (_previewMarker != null && _previewMarker.activeSelf)
+            ApplyFixedScale(_previewMarker);
     }
 
     void UpdateLabelTransforms(List<GameObject> labels)
@@ -104,6 +111,22 @@ public class RigidAlignmentMono : MonoBehaviour
             float scale = LabelBaseScale * (dist / LabelRefDistance);
             label.transform.localScale = Vector3.one * scale;
         }
+    }
+
+    void UpdateMarkerScales(List<GameObject> markers)
+    {
+        foreach (var marker in markers)
+        {
+            if (marker == null || !marker.activeSelf) continue;
+            ApplyFixedScale(marker);
+        }
+    }
+
+    void ApplyFixedScale(GameObject marker)
+    {
+        float dist = Vector3.Distance(_cam.transform.position, marker.transform.position);
+        float scale = MarkerBaseScale * (dist / MarkerRefDistance);
+        marker.transform.localScale = Vector3.one * scale;
     }
 
     void Update()
