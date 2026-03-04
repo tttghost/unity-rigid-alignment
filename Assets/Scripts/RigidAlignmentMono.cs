@@ -78,11 +78,14 @@ public class RigidAlignmentMono : MonoBehaviour
     private bool _dragIsVirtual; // 드래그 중인 마커가 virtual쪽인지
     private bool _isDragging;
 
-    // ─── 고정 크기 (카메라 거리 무관) ───
-    private const float LabelRefDistance = 5f;
-    private const float LabelBaseScale = 1f;
-    private const float MarkerRefDistance = 5f;
-    private const float MarkerBaseScale = 1f;
+    // ─── 고정 크기 (카메라 거리 보상) ───
+    [Header("크기 설정")]
+    [SerializeField, Tooltip("마커 표시 배율")]
+    private float _markerScale = 1f;
+    [SerializeField, Tooltip("잔차 라벨 표시 배율")]
+    private float _labelScale = 1f;
+
+    private const float RefDistance = 5f;
 
     void LateUpdate()
     {
@@ -107,8 +110,8 @@ public class RigidAlignmentMono : MonoBehaviour
         {
             if (label == null || !label.activeSelf) continue;
             label.transform.forward = camFwd;
-            float dist = Vector3.Distance(camPos, label.transform.position);
-            float scale = LabelBaseScale * (dist / LabelRefDistance);
+            float depth = Mathf.Max(Vector3.Dot(label.transform.position - camPos, camFwd), 0.1f);
+            float scale = _labelScale * (depth / RefDistance);
             label.transform.localScale = Vector3.one * scale;
         }
     }
@@ -122,11 +125,11 @@ public class RigidAlignmentMono : MonoBehaviour
         }
     }
 
-    void ApplyFixedScale(GameObject marker)
+    void ApplyFixedScale(GameObject go)
     {
-        float dist = Vector3.Distance(_cam.transform.position, marker.transform.position);
-        float scale = MarkerBaseScale * (dist / MarkerRefDistance);
-        marker.transform.localScale = Vector3.one * scale;
+        float depth = Mathf.Max(Vector3.Dot(go.transform.position - _cam.transform.position, _cam.transform.forward), 0.1f);
+        float scale = _markerScale * (depth / RefDistance);
+        go.transform.localScale = Vector3.one * scale;
     }
 
     void Update()
