@@ -253,6 +253,15 @@ public class RigidAlignmentMono : MonoBehaviour
             Destroy(leftMarkers[li]);
             leftMarkers.RemoveAt(li);
             leftPoints.RemoveAt(li);
+
+            // 페어 마커도 삭제
+            if (li < rightMarkers.Count)
+            {
+                Destroy(rightMarkers[li]);
+                rightMarkers.RemoveAt(li);
+                rightPoints.RemoveAt(li);
+            }
+
             RefreshAllColors();
             TryAlign();
             return;
@@ -264,6 +273,15 @@ public class RigidAlignmentMono : MonoBehaviour
             Destroy(rightMarkers[ri]);
             rightMarkers.RemoveAt(ri);
             rightPoints.RemoveAt(ri);
+
+            // 페어 마커도 삭제
+            if (ri < leftMarkers.Count)
+            {
+                Destroy(leftMarkers[ri]);
+                leftMarkers.RemoveAt(ri);
+                leftPoints.RemoveAt(ri);
+            }
+
             RefreshAllColors();
             TryAlign();
         }
