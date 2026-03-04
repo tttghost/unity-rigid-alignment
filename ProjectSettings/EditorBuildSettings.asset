@@ -9,7 +9,7 @@ EditorBuildSettings:
     path: Assets/Scenes/SampleScene.unity
     guid: 99c9720ab356a0642a771bea13969a05
   - enabled: 1
-    path: Assets/test.unity
+    path: Assets/VirnectARDemo-Cube.unity
     guid: bed835fb1c8fc1746ad4ca389705cc6c
   m_configObjects:
     UnityEditor.XR.ARCore.ARCoreSettings: {fileID: 11400000, guid: 40a9fa84a504cbb4e9df2a687311e234, type: 2}
