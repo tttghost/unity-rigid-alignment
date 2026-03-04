@@ -4,7 +4,7 @@ using UnityEngine;
 /// <summary>
 /// N점(N≥3) Kabsch 알고리즘 기반 rigid alignment.
 /// SVD를 통해 최소자승 최적 회전·이동을 계산한다.
-/// 아웃라이어 자동 제거 (σ 기반 반복 필터링)
+/// 아웃라이어 자동 제거 (σ 기반 반복 필터링) + IRLS 가중 정합
 /// </summary>
 public class RigidAlignment
 {
@@ -93,6 +93,35 @@ public class RigidAlignment
         if (activeIndices.Count < 3) return false;
         SolveCore(realArr, virtualArr, activeIndices, out position, out rotation);
 
+        // IRLS 가중 정합 (inlier 대상, Cauchy 가중함수)
+        int irlsIterations = 5;
+        for (int irlsIter = 0; irlsIter < irlsIterations; irlsIter++)
+        {
+            // 현재 정합 결과로 잔차 계산
+            var weights = new float[n];
+            float medianResidual = ComputeMedianResidual(realArr, virtualArr, activeIndices, position, rotation);
+            float c = Mathf.Max(medianResidual * 1.4826f, 1e-6f); // MAD 기반 튜닝 상수
+
+            foreach (int idx in activeIndices)
+            {
+                Vector3 transformed = rotation * virtualArr[idx] + position;
+                float r = Vector3.Distance(realArr[idx], transformed);
+                // Cauchy 가중함수: w = 1 / (1 + (r/c)^2)
+                weights[idx] = 1f / (1f + (r / c) * (r / c));
+            }
+
+            if (!SolveCore(realArr, virtualArr, activeIndices, out var newPos, out var newRot, weights))
+                break;
+
+            // 수렴 확인
+            float deltaPos = Vector3.Distance(position, newPos);
+            float deltaRot = Quaternion.Angle(rotation, newRot);
+            position = newPos;
+            rotation = newRot;
+
+            if (deltaPos < 1e-7f && deltaRot < 1e-4f) break;
+        }
+
         // 아웃라이어 인덱스 수집
         var activeSet = new HashSet<int>(activeIndices);
         for (int i = 0; i < n; i++)
@@ -144,9 +173,7 @@ public class RigidAlignment
             out position, out rotation, out _, out _);
     }
 
-    /// <summary>
-    /// 잔차 배열로 RMSE 계산 (아웃라이어 제외)
-    /// </summary>
+    /// <summary>\n    /// \uc794\ucc28 \ubc30\uc5f4\ub85c RMSE \uacc4\uc0b0 (\uc544\uc6c3\ub77c\uc774\uc5b4 \uc81c\uc678)\n    /// </summary>
     public static float ComputeRMSE(float[] residuals, List<int> outlierIndices = null)
     {
         var outlierSet = outlierIndices != null
@@ -164,14 +191,35 @@ public class RigidAlignment
     }
 
     /// <summary>
-    /// activeIndices 부분집합으로 Kabsch 정합
+    /// active 점들의 잔차 중앙값 계산 (IRLS 튜닝 상수용)
+    /// </summary>
+    static float ComputeMedianResidual(
+        List<Vector3> real, List<Vector3> virt,
+        List<int> indices, Vector3 position, Quaternion rotation)
+    {
+        var resList = new List<float>();
+        foreach (int idx in indices)
+        {
+            Vector3 transformed = rotation * virt[idx] + position;
+            resList.Add(Vector3.Distance(real[idx], transformed));
+        }
+        resList.Sort();
+        int cnt = resList.Count;
+        return cnt % 2 == 1
+            ? resList[cnt / 2]
+            : (resList[cnt / 2 - 1] + resList[cnt / 2]) * 0.5f;
+    }
+
+    /// <summary>
+    /// activeIndices 부분집합으로 Kabsch 정합 (선택적 가중치)
     /// </summary>
     bool SolveCore(
         List<Vector3> real,
         List<Vector3> virt,
         List<int> indices,
         out Vector3 position,
-        out Quaternion rotation)
+        out Quaternion rotation,
+        float[] weights = null)
     {
         position = Vector3.zero;
         rotation = Quaternion.identity;
@@ -179,25 +227,29 @@ public class RigidAlignment
         int n = indices.Count;
         if (n < 3) return false;
 
-        // 무게중심
+        // 가중 무게중심
         Vector3 centL = Vector3.zero, centR = Vector3.zero;
+        float totalW = 0f;
         foreach (int i in indices)
         {
-            centL += real[i];
-            centR += virt[i];
+            float w = (weights != null) ? weights[i] : 1f;
+            centL += w * real[i];
+            centR += w * virt[i];
+            totalW += w;
         }
-        centL /= n;
-        centR /= n;
+        centL /= totalW;
+        centR /= totalW;
 
-        // 교차공분산 행렬 H
+        // 가중 교차공분산 행렬 H
         float[,] H = new float[3, 3];
         foreach (int i in indices)
         {
+            float w = (weights != null) ? weights[i] : 1f;
             Vector3 l = real[i] - centL;
             Vector3 r = virt[i] - centR;
-            H[0, 0] += l.x * r.x; H[0, 1] += l.x * r.y; H[0, 2] += l.x * r.z;
-            H[1, 0] += l.y * r.x; H[1, 1] += l.y * r.y; H[1, 2] += l.y * r.z;
-            H[2, 0] += l.z * r.x; H[2, 1] += l.z * r.y; H[2, 2] += l.z * r.z;
+            H[0, 0] += w * l.x * r.x; H[0, 1] += w * l.x * r.y; H[0, 2] += w * l.x * r.z;
+            H[1, 0] += w * l.y * r.x; H[1, 1] += w * l.y * r.y; H[1, 2] += w * l.y * r.z;
+            H[2, 0] += w * l.z * r.x; H[2, 1] += w * l.z * r.y; H[2, 2] += w * l.z * r.z;
         }
 
         // SVD
