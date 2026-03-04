@@ -13,7 +13,7 @@ GameObject:
   - component: {fileID: 469417719445328862}
   - component: {fileID: 5354657877520598656}
   m_Layer: 0
-  m_Name: Sphere
+  m_Name: Marker
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
