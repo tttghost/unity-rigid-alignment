@@ -4,7 +4,6 @@ public class RigidAlignmentMono : MonoBehaviour
 {
     public Camera cam;
 
-    public Transform leftCube;
     public Transform rightCube;
 
     public GameObject markerPrefab;
@@ -37,7 +36,7 @@ public class RigidAlignmentMono : MonoBehaviour
     private GameObject _dragMarker;
     private Vector3 _dragStartWorldPos;
     private Vector3 _dragStartMousePos;
-    private Transform _dragOwnerCube; // 이 마커가 속한 큐브
+    private bool _dragIsRight; // 드래그 중인 마커가 right(virtual)쪽인지
     private bool _isDragging;
 
     void Update()
@@ -53,7 +52,7 @@ public class RigidAlignmentMono : MonoBehaviour
         if (Input.GetMouseButtonUp(0) && _dragMarker != null)
             OnMouseUp();
 
-        if (Input.GetKeyDown(KeyCode.Alpha1))
+        if (Input.GetKeyDown(KeyCode.Escape))
             ResetAlignment();
     }
 
@@ -70,8 +69,7 @@ public class RigidAlignmentMono : MonoBehaviour
 
         Ray ray = cam.ScreenPointToRay(Input.mousePosition);
 
-        if (Physics.Raycast(ray, out RaycastHit hit) &&
-            (hit.transform == leftCube || hit.transform == rightCube))
+        if (Physics.Raycast(ray, out RaycastHit hit) && !IsMarker(hit.transform.gameObject))
         {
             if (_previewMarker == null)
             {
@@ -126,7 +124,7 @@ public class RigidAlignmentMono : MonoBehaviour
         {
             _dragMarker = leftMarkers[li];
             _dragStartWorldPos = _dragMarker.transform.position;
-            _dragOwnerCube = leftCube;
+            _dragIsRight = false;
             return;
         }
 
@@ -135,29 +133,31 @@ public class RigidAlignmentMono : MonoBehaviour
         {
             _dragMarker = rightMarkers[ri];
             _dragStartWorldPos = _dragMarker.transform.position;
-            _dragOwnerCube = rightCube;
+            _dragIsRight = true;
             return;
         }
 
-        // 큐브 클릭 → 새 마커 생성
-        if (hit.transform == leftCube)
+        // 오브젝트 클릭 → 새 마커 생성
+        if (hit.transform == rightCube)
         {
-            var marker = Instantiate(markerPrefab, hit.point, Quaternion.identity);
-            EnableMarkerCollider(marker);
-            leftMarkers.Add(marker);
-            leftPoints.Add(hit.point);
-            int idx = leftMarkers.Count - 1;
-            SetMarkerColor(marker, GetPairColor(idx));
-            SyncPairColor(idx);
-            TryAlign();
-        }
-        else if (hit.transform == rightCube)
-        {
+            // virtual 쪽
             var marker = Instantiate(markerPrefab, hit.point, Quaternion.identity);
             EnableMarkerCollider(marker);
             rightMarkers.Add(marker);
             rightPoints.Add(rightCube.InverseTransformPoint(hit.point));
             int idx = rightMarkers.Count - 1;
+            SetMarkerColor(marker, GetPairColor(idx));
+            SyncPairColor(idx);
+            TryAlign();
+        }
+        else
+        {
+            // real 쪽 (rightCube가 아닌 모든 콜라이더)
+            var marker = Instantiate(markerPrefab, hit.point, Quaternion.identity);
+            EnableMarkerCollider(marker);
+            leftMarkers.Add(marker);
+            leftPoints.Add(hit.point);
+            int idx = leftMarkers.Count - 1;
             SetMarkerColor(marker, GetPairColor(idx));
             SyncPairColor(idx);
             TryAlign();
@@ -177,9 +177,9 @@ public class RigidAlignmentMono : MonoBehaviour
             if (dragCol != null) dragCol.enabled = false;
         }
 
-        // 큐브 표면 위로 마커 이동
+        // 표면 위로 마커 이동
         Ray ray = cam.ScreenPointToRay(Input.mousePosition);
-        if (Physics.Raycast(ray, out RaycastHit hit) && hit.transform == _dragOwnerCube)
+        if (Physics.Raycast(ray, out RaycastHit hit) && IsValidDragSurface(hit.transform))
         {
             _dragMarker.transform.position = hit.point;
         }
@@ -192,13 +192,12 @@ public class RigidAlignmentMono : MonoBehaviour
             // 드래그 아닌 클릭 → 삭제
             DeleteMarker(_dragMarker);
             _dragMarker = null;
-            _dragOwnerCube = null;
             return;
         }
 
-        // 드래그 끝: 큐브 표면 위인지 확인
+        // 드래그 끝: 유효한 표면 위인지 확인
         Ray ray = cam.ScreenPointToRay(Input.mousePosition);
-        bool onSurface = Physics.Raycast(ray, out RaycastHit hit) && hit.transform == _dragOwnerCube;
+        bool onSurface = Physics.Raycast(ray, out RaycastHit hit) && IsValidDragSurface(hit.transform);
 
         if (onSurface)
         {
@@ -216,10 +215,23 @@ public class RigidAlignmentMono : MonoBehaviour
         EnableMarkerCollider(_dragMarker);
 
         _dragMarker = null;
-        _dragOwnerCube = null;
         _isDragging = false;
 
         TryAlign();
+    }
+
+    // ─── 유틸리티 ───
+
+    bool IsMarker(GameObject go) =>
+        leftMarkers.Contains(go) || rightMarkers.Contains(go);
+
+    /// <summary>
+    /// 드래그 중 유효한 표면인지: right마커는 rightCube만, left마커는 rightCube 외 모든 콜라이더
+    /// </summary>
+    bool IsValidDragSurface(Transform surface)
+    {
+        if (IsMarker(surface.gameObject)) return false;
+        return _dragIsRight ? surface == rightCube : surface != rightCube;
     }
 
     // ─── 마커 관리 ───
@@ -339,7 +351,6 @@ public class RigidAlignmentMono : MonoBehaviour
 
         // 드래그 상태 초기화
         _dragMarker = null;
-        _dragOwnerCube = null;
         _isDragging = false;
 
         if (_previewMarker != null)
