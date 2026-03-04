@@ -5,6 +5,7 @@ public class RigidAlignmentMono : MonoBehaviour
     [SerializeField] private Camera _cam;
     [SerializeField] private Transform _virtualModel;
     [SerializeField] private GameObject _markerPrefab;
+    [SerializeField] private Material _cloneMaterial;
 
     private List<Vector3> _realPoints = new();
     private List<Vector3> _virtualPoints = new();
@@ -345,6 +346,18 @@ public class RigidAlignmentMono : MonoBehaviour
         // 콜라이더 비활성화
         foreach (var col in _clone.GetComponentsInChildren<Collider>(true))
             col.enabled = false;
+
+        // 클론 머티리얼 적용
+        if (_cloneMaterial != null)
+        {
+            foreach (var renderer in _clone.GetComponentsInChildren<Renderer>(true))
+            {
+                var mats = new Material[renderer.sharedMaterials.Length];
+                for (int i = 0; i < mats.Length; i++)
+                    mats[i] = _cloneMaterial;
+                renderer.materials = mats;
+            }
+        }
     }
 
     public void ResetAlignment()
