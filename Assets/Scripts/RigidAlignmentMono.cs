@@ -85,13 +85,18 @@ public class RigidAlignmentMono : MonoBehaviour
         if (Physics.Raycast(ray, out RaycastHit hit) && !IsMarker(hit.transform.gameObject))
         {
             if (_previewMarker == null)
-            {
                 _previewMarker = Instantiate(_markerPrefab);
-                SetMarkerAlpha(_previewMarker, 0.4f);
-            }
 
             _previewMarker.SetActive(true);
             _previewMarker.transform.position = hit.point;
+
+            // 호버 위치에 따라 다음 마커의 페어 색상 적용
+            int nextIdx = hit.transform == _virtualModel
+                ? _virtualMarkers.Count
+                : _realMarkers.Count;
+            Color previewColor = GetPairColor(nextIdx);
+            previewColor.a = 0.4f;
+            SetMarkerColor(_previewMarker, previewColor);
         }
         else
         {
