@@ -9,7 +9,7 @@ using UnityEngine;
 public class RigidAlignment
 {
     /// <summary>
-    /// 아웃라이어 제거 후 정합. outlierIndices에 제외된 페어 인덱스 반환.
+    /// 아웃라이어 제거 후 정합. outlierIndices에 제외된 페어 인덱스, residuals에 전체 잔차 배열 반환.
     /// </summary>
     public bool Solve(
         List<Vector3> realPoints,
@@ -18,12 +18,14 @@ public class RigidAlignment
         out Vector3 position,
         out Quaternion rotation,
         out List<int> outlierIndices,
+        out float[] residuals,
         float sigmaThreshold = 2f,
         int maxIterations = 3)
     {
         position = Vector3.zero;
         rotation = Quaternion.identity;
         outlierIndices = new List<int>();
+        residuals = System.Array.Empty<float>();
 
         int n = Mathf.Min(realPoints.Count, virtualPoints.Count);
         if (n < 3) return false;
@@ -49,22 +51,22 @@ public class RigidAlignment
             if (activeIndices.Count <= 3) break;
 
             // 각 점의 잔차 계산
-            var residuals = new List<float>();
+            var iterResiduals = new List<float>();
             foreach (int idx in activeIndices)
             {
                 Vector3 transformed = rotation * virtualArr[idx] + position;
                 float residual = Vector3.Distance(realArr[idx], transformed);
-                residuals.Add(residual);
+                iterResiduals.Add(residual);
             }
 
             // 평균, 표준편차
             float mean = 0f;
-            foreach (float r in residuals) mean += r;
-            mean /= residuals.Count;
+            foreach (float r in iterResiduals) mean += r;
+            mean /= iterResiduals.Count;
 
             float variance = 0f;
-            foreach (float r in residuals) variance += (r - mean) * (r - mean);
-            float sigma = Mathf.Sqrt(variance / residuals.Count);
+            foreach (float r in iterResiduals) variance += (r - mean) * (r - mean);
+            float sigma = Mathf.Sqrt(variance / iterResiduals.Count);
 
             // σ가 매우 작으면 (거의 완벽한 정합) 종료
             if (sigma < 1e-6f) break;
@@ -76,7 +78,7 @@ public class RigidAlignment
 
             for (int i = 0; i < activeIndices.Count; i++)
             {
-                if (residuals[i] <= threshold)
+                if (iterResiduals[i] <= threshold)
                     newActive.Add(activeIndices[i]);
                 else
                     removed = true;
@@ -99,7 +101,33 @@ public class RigidAlignment
                 outlierIndices.Add(i);
         }
 
+        // 잔차 배열 계산 (전체 점)
+        residuals = new float[n];
+        for (int i = 0; i < n; i++)
+        {
+            Vector3 transformed = rotation * virtualArr[i] + position;
+            residuals[i] = Vector3.Distance(realArr[i], transformed);
+        }
+
         return true;
+    }
+
+    /// <summary>
+    /// 하위호환: 잔차 배열 없이 호출
+    /// </summary>
+    public bool Solve(
+        List<Vector3> realPoints,
+        List<Vector3> virtualPoints,
+        Vector3 virtualScale,
+        out Vector3 position,
+        out Quaternion rotation,
+        out List<int> outlierIndices,
+        float sigmaThreshold = 2f,
+        int maxIterations = 3)
+    {
+        return Solve(realPoints, virtualPoints, virtualScale,
+            out position, out rotation, out outlierIndices, out _,
+            sigmaThreshold, maxIterations);
     }
 
     /// <summary>
@@ -112,7 +140,27 @@ public class RigidAlignment
         out Vector3 position,
         out Quaternion rotation)
     {
-        return Solve(realPoints, virtualPoints, virtualScale, out position, out rotation, out _);
+        return Solve(realPoints, virtualPoints, virtualScale,
+            out position, out rotation, out _, out _);
+    }
+
+    /// <summary>
+    /// 잔차 배열로 RMSE 계산 (아웃라이어 제외)
+    /// </summary>
+    public static float ComputeRMSE(float[] residuals, List<int> outlierIndices = null)
+    {
+        var outlierSet = outlierIndices != null
+            ? new HashSet<int>(outlierIndices)
+            : new HashSet<int>();
+        float sumSq = 0f;
+        int count = 0;
+        for (int i = 0; i < residuals.Length; i++)
+        {
+            if (outlierSet.Contains(i)) continue;
+            sumSq += residuals[i] * residuals[i];
+            count++;
+        }
+        return count > 0 ? Mathf.Sqrt(sumSq / count) : 0f;
     }
 
     /// <summary>

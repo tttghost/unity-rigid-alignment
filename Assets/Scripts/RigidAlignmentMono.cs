@@ -1,11 +1,14 @@
 using System.Collections.Generic;
 using UnityEngine;
+using TMPro;
+
 public class RigidAlignmentMono : MonoBehaviour
 {
     [SerializeField] private Camera _cam;
     [SerializeField] private Transform _virtualModel;
     [SerializeField] private GameObject _markerPrefab;
     [SerializeField] private Material _cloneMaterial;
+    [SerializeField] private TMP_Text _rmseText;
 
     private List<Vector3> _realPoints = new();
     private List<Vector3> _virtualPoints = new();
@@ -15,8 +18,7 @@ public class RigidAlignmentMono : MonoBehaviour
     private RigidAlignment _solver = new RigidAlignment();
 
     private GameObject _previewMarker;
-    private GameObject _clone;
-
+    private GameObject _clone;    private List<GameObject> _residualLabels = new();
     // ─── 컬러 페어링 ───
     private static readonly Color[] PairColors = new[]
     {
@@ -37,6 +39,17 @@ public class RigidAlignmentMono : MonoBehaviour
     private Vector3 _dragStartMousePos;
     private bool _dragIsVirtual; // 드래그 중인 마커가 virtual쪽인지
     private bool _isDragging;
+
+    void LateUpdate()
+    {
+        // 잔차 라벨 빌보드 (카메라 방향으로 정렬)
+        if (_cam != null)
+        {
+            foreach (var label in _residualLabels)
+                if (label != null)
+                    label.transform.forward = _cam.transform.forward;
+        }
+    }
 
     void Update()
     {
@@ -314,7 +327,7 @@ public class RigidAlignmentMono : MonoBehaviour
         if (_realPoints.Count >= 3 && _virtualPoints.Count >= 3)
         {
             if (_solver.Solve(_realPoints, _virtualPoints, _virtualModel.localScale,
-                out var pos, out var rot, out var outliers))
+                out var pos, out var rot, out var outliers, out var residuals))
             {
                 EnsureClone();
                 _clone.SetActive(true);
@@ -339,6 +352,14 @@ public class RigidAlignmentMono : MonoBehaviour
                         SetMarkerColor(_virtualMarkers[i], c);
                     }
                 }
+
+                // RMSE 표시
+                float rmse = RigidAlignment.ComputeRMSE(residuals, outliers);
+                if (_rmseText != null)
+                    _rmseText.text = $"RMSE: {rmse:F4} m  (inliers: {pairCount - outliers.Count}/{pairCount})";
+
+                // 마커별 잔차 라벨
+                UpdateResidualLabels(residuals, outlierSet);
             }
         }
         else
@@ -349,7 +370,70 @@ public class RigidAlignmentMono : MonoBehaviour
 
             // 색상 복원
             RefreshAllColors();
+
+            // 잔차 시각화 초기화
+            ClearResidualLabels();
+            if (_rmseText != null) _rmseText.text = "";
         }
+    }
+
+    // ─── 잔차 시각화 ───
+
+    void UpdateResidualLabels(float[] residuals, HashSet<int> outlierSet)
+    {
+        ClearResidualLabels();
+
+        float maxInlierResidual = 0f;
+        for (int i = 0; i < residuals.Length; i++)
+            if (!outlierSet.Contains(i))
+                maxInlierResidual = Mathf.Max(maxInlierResidual, residuals[i]);
+
+        int pairCount = Mathf.Min(_realMarkers.Count, residuals.Length);
+        for (int i = 0; i < pairCount; i++)
+        {
+            var label = CreateResidualLabel(
+                _realMarkers[i].transform.position,
+                residuals[i],
+                outlierSet.Contains(i),
+                maxInlierResidual);
+            _residualLabels.Add(label);
+        }
+    }
+
+    GameObject CreateResidualLabel(Vector3 position, float residual, bool isOutlier, float maxResidual)
+    {
+        var go = new GameObject("ResidualLabel");
+        go.transform.position = position + Vector3.up * 0.05f;
+
+        var tmp = go.AddComponent<TextMeshPro>();
+        tmp.text = $"{residual:F4} m";
+        tmp.fontSize = 2f;
+        tmp.alignment = TextAlignmentOptions.Center;
+        tmp.sortingOrder = 10;
+
+        if (isOutlier)
+            tmp.color = new Color(0.5f, 0.5f, 0.5f, 0.6f);
+        else
+            tmp.color = ResidualToColor(residual, maxResidual);
+
+        return go;
+    }
+
+    Color ResidualToColor(float residual, float maxResidual)
+    {
+        if (maxResidual < 1e-6f) return Color.green;
+        float t = Mathf.Clamp01(residual / maxResidual);
+        // 녹색 → 노랑 → 빨강
+        return t < 0.5f
+            ? Color.Lerp(Color.green, Color.yellow, t * 2f)
+            : Color.Lerp(Color.yellow, Color.red, (t - 0.5f) * 2f);
+    }
+
+    void ClearResidualLabels()
+    {
+        foreach (var label in _residualLabels)
+            if (label != null) Destroy(label);
+        _residualLabels.Clear();
     }
 
     void EnsureClone()
@@ -385,6 +469,10 @@ public class RigidAlignmentMono : MonoBehaviour
 
     public void ResetAlignment()
     {
+        // 잔차 시각화 초기화
+        ClearResidualLabels();
+        if (_rmseText != null) _rmseText.text = "";
+
         // 마커 전부 삭제
         foreach (var m in _realMarkers) Destroy(m);
         foreach (var m in _virtualMarkers) Destroy(m);
