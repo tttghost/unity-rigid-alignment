@@ -17,15 +17,7 @@ public class RigidAlignmentMono : MonoBehaviour
     private RigidAlignment solver = new RigidAlignment();
 
     private GameObject _previewMarker;
-
-    private Vector3 _rightCubeInitPos;
-    private Quaternion _rightCubeInitRot;
-
-    void Start()
-    {
-        _rightCubeInitPos = rightCube.position;
-        _rightCubeInitRot = rightCube.rotation;
-    }
+    private GameObject _clone;
 
     void Update()
     {
@@ -75,6 +67,7 @@ public class RigidAlignmentMono : MonoBehaviour
             mat.color = color;
         }
     }
+
     void CounterScaleMarker(Transform marker, Transform parent)
     {
         Vector3 originalScale = markerPrefab.transform.localScale;
@@ -142,17 +135,46 @@ public class RigidAlignmentMono : MonoBehaviour
         var col = marker.GetComponent<Collider>();
         if (col != null) col.enabled = true;
     }
+
     void TryAlign()
     {
         if (leftPoints.Count >= 3 && rightPoints.Count >= 3)
         {
             if (solver.Solve(leftPoints, rightPoints, rightCube.localScale, out var pos, out var rot))
             {
-                rightCube.rotation = rot;
-                rightCube.position = pos;
+                EnsureClone();
+                _clone.SetActive(true);
+                _clone.transform.rotation = rot;
+                _clone.transform.position = pos;
             }
         }
+        else
+        {
+            // 3쌍 미만이면 Clone 숨김
+            if (_clone != null)
+                _clone.SetActive(false);
+        }
     }
+
+    void EnsureClone()
+    {
+        if (_clone != null) return;
+
+        _clone = Instantiate(rightCube.gameObject);
+        _clone.name = rightCube.name + "_Clone";
+
+        // 자식(마커) 제거 — 비주얼만 남김
+        var children = new List<Transform>();
+        foreach (Transform child in _clone.transform)
+            children.Add(child);
+        foreach (var child in children)
+            Destroy(child.gameObject);
+
+        // 콜라이더 비활성화
+        foreach (var col in _clone.GetComponentsInChildren<Collider>(true))
+            col.enabled = false;
+    }
+
     public void ResetAlignment()
     {
         leftPoints.Clear();
@@ -160,9 +182,12 @@ public class RigidAlignmentMono : MonoBehaviour
         leftMarkers.Clear();
         rightMarkers.Clear();
 
-        // RightCube 원위치 복원
-        rightCube.position = _rightCubeInitPos;
-        rightCube.rotation = _rightCubeInitRot;
+        // Clone 삭제
+        if (_clone != null)
+        {
+            Destroy(_clone);
+            _clone = null;
+        }
 
         // 마커 전부 삭제
         foreach (Transform child in leftCube)
@@ -182,5 +207,4 @@ public class RigidAlignmentMono : MonoBehaviour
             _previewMarker = null;
         }
     }
-
 }
