@@ -1,0 +1,19 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../UnityCommonPackage/VirnectAR"
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"*.asset": "yaml",
+			"*.meta": "yaml",
+			"*.prefab": "yaml",
+			"*.unity": "yaml"
+		},
+		"dotnet.defaultSolution": "virnectar-test-2026-02-24.slnx"
+	}
+}
