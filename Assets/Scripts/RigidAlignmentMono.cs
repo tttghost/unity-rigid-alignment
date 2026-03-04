@@ -195,11 +195,20 @@ public class RigidAlignmentMono : MonoBehaviour
             if (dragCol != null) dragCol.enabled = false;
         }
 
-        // 표면 위로 마커 이동
+        // 표면 위로 마커 이동 + 실시간 정합
         Ray ray = _cam.ScreenPointToRay(Input.mousePosition);
         if (Physics.Raycast(ray, out RaycastHit hit) && IsValidDragSurface(hit.transform))
         {
             _dragMarker.transform.position = hit.point;
+            UpdateMarkerPoint(_dragMarker, hit.point);
+            TryAlign();
+        }
+        else
+        {
+            // 유효 표면 밖 → 드래그 시작 위치로 즉시 원복
+            _dragMarker.transform.position = _dragStartWorldPos;
+            UpdateMarkerPoint(_dragMarker, _dragStartWorldPos);
+            TryAlign();
         }
     }
 
@@ -213,29 +222,11 @@ public class RigidAlignmentMono : MonoBehaviour
             return;
         }
 
-        // 드래그 끝: 유효한 표면 위인지 확인
-        Ray ray = _cam.ScreenPointToRay(Input.mousePosition);
-        bool onSurface = Physics.Raycast(ray, out RaycastHit hit) && IsValidDragSurface(hit.transform);
-
-        if (onSurface)
-        {
-            // 새 위치 확정
-            _dragMarker.transform.position = hit.point;
-            UpdateMarkerPoint(_dragMarker, hit.point);
-        }
-        else
-        {
-            // 표면 밖 → 원위치 복원
-            _dragMarker.transform.position = _dragStartWorldPos;
-        }
-
-        // 콜라이더 복원
+        // 드래그 중 실시간 정합 완료 — 콜라이더 복원만
         EnableMarkerCollider(_dragMarker);
 
         _dragMarker = null;
         _isDragging = false;
-
-        TryAlign();
     }
 
     // ─── 유틸리티 ───
@@ -387,45 +378,47 @@ public class RigidAlignmentMono : MonoBehaviour
 
     void UpdateResidualLabels(float[] residuals, HashSet<int> outlierSet)
     {
-        ClearResidualLabels();
-
         float maxInlierResidual = 0f;
         for (int i = 0; i < residuals.Length; i++)
             if (!outlierSet.Contains(i))
                 maxInlierResidual = Mathf.Max(maxInlierResidual, residuals[i]);
 
         int pairCount = Mathf.Min(_realMarkers.Count, residuals.Length);
+
+        // 풀링: 필요한 만큼 라벨 확보
+        while (_residualLabels.Count < pairCount)
+            _residualLabels.Add(CreateResidualLabelObject());
+
+        // 기존 라벨 재사용
         for (int i = 0; i < pairCount; i++)
         {
-            var label = CreateResidualLabel(
-                _realMarkers[i].transform.position,
-                residuals[i],
-                outlierSet.Contains(i),
-                maxInlierResidual);
-            _residualLabels.Add(label);
+            var label = _residualLabels[i];
+            label.SetActive(true);
+            label.transform.position = _realMarkers[i].transform.position + Vector3.up * 0.05f;
+
+            var tmp = label.GetComponent<TextMeshPro>();
+            tmp.text = $"{residuals[i]:F4} m";
+
+            if (outlierSet.Contains(i))
+                tmp.color = new Color(0.5f, 0.5f, 0.5f, 0.6f);
+            else
+                tmp.color = ResidualToColor(residuals[i], maxInlierResidual);
         }
+
+        // 남는 라벨 숨김
+        for (int i = pairCount; i < _residualLabels.Count; i++)
+            _residualLabels[i].SetActive(false);
     }
 
-    GameObject CreateResidualLabel(Vector3 position, float residual, bool isOutlier, float maxResidual)
+    GameObject CreateResidualLabelObject()
     {
         var go = new GameObject("ResidualLabel");
-        go.transform.position = position + Vector3.up * 0.05f;
-
         var tmp = go.AddComponent<TextMeshPro>();
-        tmp.text = $"{residual:F4} m";
         tmp.fontSize = 2f;
         tmp.alignment = TextAlignmentOptions.Center;
         tmp.sortingOrder = 10;
-
-        // Overlay 머티리얼 적용 (오브젝트에 가려지지 않도록)
         if (_residualLabelMaterial != null)
             tmp.fontSharedMaterial = _residualLabelMaterial;
-
-        if (isOutlier)
-            tmp.color = new Color(0.5f, 0.5f, 0.5f, 0.6f);
-        else
-            tmp.color = ResidualToColor(residual, maxResidual);
-
         return go;
     }
 
@@ -440,6 +433,12 @@ public class RigidAlignmentMono : MonoBehaviour
     }
 
     void ClearResidualLabels()
+    {
+        foreach (var label in _residualLabels)
+            if (label != null) label.SetActive(false);
+    }
+
+    void DestroyResidualLabels()
     {
         foreach (var label in _residualLabels)
             if (label != null) Destroy(label);
@@ -480,7 +479,7 @@ public class RigidAlignmentMono : MonoBehaviour
     public void ResetAlignment()
     {
         // 잔차 시각화 초기화
-        ClearResidualLabels();
+        DestroyResidualLabels();
         if (_rmseText != null) _rmseText.text = "";
 
         // 마커 전부 삭제
