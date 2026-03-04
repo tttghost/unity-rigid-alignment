@@ -2,18 +2,16 @@ using System.Collections.Generic;
 using UnityEngine;
 public class RigidAlignmentMono : MonoBehaviour
 {
-    public Camera cam;
+    [SerializeField] private Camera _cam;
+    [SerializeField] private Transform _virtualModel;
+    [SerializeField] private GameObject _markerPrefab;
 
-    public Transform rightCube;
+    private List<Vector3> _realPoints = new();
+    private List<Vector3> _virtualPoints = new();
+    private List<GameObject> _realMarkers = new();
+    private List<GameObject> _virtualMarkers = new();
 
-    public GameObject markerPrefab;
-
-    private List<Vector3> leftPoints = new();
-    private List<Vector3> rightPoints = new();
-    private List<GameObject> leftMarkers = new();
-    private List<GameObject> rightMarkers = new();
-
-    private RigidAlignment solver = new RigidAlignment();
+    private RigidAlignment _solver = new RigidAlignment();
 
     private GameObject _previewMarker;
     private GameObject _clone;
@@ -36,7 +34,7 @@ public class RigidAlignmentMono : MonoBehaviour
     private GameObject _dragMarker;
     private Vector3 _dragStartWorldPos;
     private Vector3 _dragStartMousePos;
-    private bool _dragIsRight; // 드래그 중인 마커가 right(virtual)쪽인지
+    private bool _dragIsVirtual; // 드래그 중인 마커가 virtual쪽인지
     private bool _isDragging;
 
     void Update()
@@ -67,13 +65,13 @@ public class RigidAlignmentMono : MonoBehaviour
             return;
         }
 
-        Ray ray = cam.ScreenPointToRay(Input.mousePosition);
+        Ray ray = _cam.ScreenPointToRay(Input.mousePosition);
 
         if (Physics.Raycast(ray, out RaycastHit hit) && !IsMarker(hit.transform.gameObject))
         {
             if (_previewMarker == null)
             {
-                _previewMarker = Instantiate(markerPrefab);
+                _previewMarker = Instantiate(_markerPrefab);
                 SetMarkerAlpha(_previewMarker, 0.4f);
             }
 
@@ -115,49 +113,49 @@ public class RigidAlignmentMono : MonoBehaviour
         _isDragging = false;
         _dragStartMousePos = Input.mousePosition;
 
-        Ray ray = cam.ScreenPointToRay(Input.mousePosition);
+        Ray ray = _cam.ScreenPointToRay(Input.mousePosition);
         if (!Physics.Raycast(ray, out RaycastHit hit)) return;
 
         // 마커를 눌렀으면 드래그 준비
-        int li = leftMarkers.IndexOf(hit.transform.gameObject);
-        if (li >= 0)
+        int ri = _realMarkers.IndexOf(hit.transform.gameObject);
+        if (ri >= 0)
         {
-            _dragMarker = leftMarkers[li];
+            _dragMarker = _realMarkers[ri];
             _dragStartWorldPos = _dragMarker.transform.position;
-            _dragIsRight = false;
+            _dragIsVirtual = false;
             return;
         }
 
-        int ri = rightMarkers.IndexOf(hit.transform.gameObject);
-        if (ri >= 0)
+        int vi = _virtualMarkers.IndexOf(hit.transform.gameObject);
+        if (vi >= 0)
         {
-            _dragMarker = rightMarkers[ri];
+            _dragMarker = _virtualMarkers[vi];
             _dragStartWorldPos = _dragMarker.transform.position;
-            _dragIsRight = true;
+            _dragIsVirtual = true;
             return;
         }
 
         // 오브젝트 클릭 → 새 마커 생성
-        if (hit.transform == rightCube)
+        if (hit.transform == _virtualModel)
         {
             // virtual 쪽
-            var marker = Instantiate(markerPrefab, hit.point, Quaternion.identity);
+            var marker = Instantiate(_markerPrefab, hit.point, Quaternion.identity);
             EnableMarkerCollider(marker);
-            rightMarkers.Add(marker);
-            rightPoints.Add(rightCube.InverseTransformPoint(hit.point));
-            int idx = rightMarkers.Count - 1;
+            _virtualMarkers.Add(marker);
+            _virtualPoints.Add(_virtualModel.InverseTransformPoint(hit.point));
+            int idx = _virtualMarkers.Count - 1;
             SetMarkerColor(marker, GetPairColor(idx));
             SyncPairColor(idx);
             TryAlign();
         }
         else
         {
-            // real 쪽 (rightCube가 아닌 모든 콜라이더)
-            var marker = Instantiate(markerPrefab, hit.point, Quaternion.identity);
+            // real 쪽 (virtualModel이 아닌 모든 콜라이더)
+            var marker = Instantiate(_markerPrefab, hit.point, Quaternion.identity);
             EnableMarkerCollider(marker);
-            leftMarkers.Add(marker);
-            leftPoints.Add(hit.point);
-            int idx = leftMarkers.Count - 1;
+            _realMarkers.Add(marker);
+            _realPoints.Add(hit.point);
+            int idx = _realMarkers.Count - 1;
             SetMarkerColor(marker, GetPairColor(idx));
             SyncPairColor(idx);
             TryAlign();
@@ -172,13 +170,13 @@ public class RigidAlignmentMono : MonoBehaviour
             if (Vector3.Distance(Input.mousePosition, _dragStartMousePos) < DragThreshold)
                 return;
             _isDragging = true;
-            // 드래그 시작 시 마커 콜라이더 끄기 (큐브 표면 레이캐스트 방해 방지)
+            // 드래그 시작 시 마커 콜라이더 끄기 (표면 레이캐스트 방해 방지)
             var dragCol = _dragMarker.GetComponent<Collider>();
             if (dragCol != null) dragCol.enabled = false;
         }
 
         // 표면 위로 마커 이동
-        Ray ray = cam.ScreenPointToRay(Input.mousePosition);
+        Ray ray = _cam.ScreenPointToRay(Input.mousePosition);
         if (Physics.Raycast(ray, out RaycastHit hit) && IsValidDragSurface(hit.transform))
         {
             _dragMarker.transform.position = hit.point;
@@ -196,7 +194,7 @@ public class RigidAlignmentMono : MonoBehaviour
         }
 
         // 드래그 끝: 유효한 표면 위인지 확인
-        Ray ray = cam.ScreenPointToRay(Input.mousePosition);
+        Ray ray = _cam.ScreenPointToRay(Input.mousePosition);
         bool onSurface = Physics.Raycast(ray, out RaycastHit hit) && IsValidDragSurface(hit.transform);
 
         if (onSurface)
@@ -207,7 +205,7 @@ public class RigidAlignmentMono : MonoBehaviour
         }
         else
         {
-            // 큐브 밖 → 원위치 복원
+            // 표면 밖 → 원위치 복원
             _dragMarker.transform.position = _dragStartWorldPos;
         }
 
@@ -223,43 +221,43 @@ public class RigidAlignmentMono : MonoBehaviour
     // ─── 유틸리티 ───
 
     bool IsMarker(GameObject go) =>
-        leftMarkers.Contains(go) || rightMarkers.Contains(go);
+        _realMarkers.Contains(go) || _virtualMarkers.Contains(go);
 
     /// <summary>
-    /// 드래그 중 유효한 표면인지: right마커는 rightCube만, left마커는 rightCube 외 모든 콜라이더
+    /// 드래그 중 유효한 표면인지: virtual 마커는 virtualModel만, real 마커는 virtualModel 외 모든 콜라이더
     /// </summary>
     bool IsValidDragSurface(Transform surface)
     {
         if (IsMarker(surface.gameObject)) return false;
-        return _dragIsRight ? surface == rightCube : surface != rightCube;
+        return _dragIsVirtual ? surface == _virtualModel : surface != _virtualModel;
     }
 
     // ─── 마커 관리 ───
 
     void UpdateMarkerPoint(GameObject marker, Vector3 worldPos)
     {
-        int li = leftMarkers.IndexOf(marker);
-        if (li >= 0) { leftPoints[li] = worldPos; return; }
+        int ri = _realMarkers.IndexOf(marker);
+        if (ri >= 0) { _realPoints[ri] = worldPos; return; }
 
-        int ri = rightMarkers.IndexOf(marker);
-        if (ri >= 0) { rightPoints[ri] = rightCube.InverseTransformPoint(worldPos); }
+        int vi = _virtualMarkers.IndexOf(marker);
+        if (vi >= 0) { _virtualPoints[vi] = _virtualModel.InverseTransformPoint(worldPos); }
     }
 
     void DeleteMarker(GameObject marker)
     {
-        int li = leftMarkers.IndexOf(marker);
-        if (li >= 0)
+        int ri = _realMarkers.IndexOf(marker);
+        if (ri >= 0)
         {
-            Destroy(leftMarkers[li]);
-            leftMarkers.RemoveAt(li);
-            leftPoints.RemoveAt(li);
+            Destroy(_realMarkers[ri]);
+            _realMarkers.RemoveAt(ri);
+            _realPoints.RemoveAt(ri);
 
             // 페어 마커도 삭제
-            if (li < rightMarkers.Count)
+            if (ri < _virtualMarkers.Count)
             {
-                Destroy(rightMarkers[li]);
-                rightMarkers.RemoveAt(li);
-                rightPoints.RemoveAt(li);
+                Destroy(_virtualMarkers[ri]);
+                _virtualMarkers.RemoveAt(ri);
+                _virtualPoints.RemoveAt(ri);
             }
 
             RefreshAllColors();
@@ -267,19 +265,19 @@ public class RigidAlignmentMono : MonoBehaviour
             return;
         }
 
-        int ri = rightMarkers.IndexOf(marker);
-        if (ri >= 0)
+        int vi = _virtualMarkers.IndexOf(marker);
+        if (vi >= 0)
         {
-            Destroy(rightMarkers[ri]);
-            rightMarkers.RemoveAt(ri);
-            rightPoints.RemoveAt(ri);
+            Destroy(_virtualMarkers[vi]);
+            _virtualMarkers.RemoveAt(vi);
+            _virtualPoints.RemoveAt(vi);
 
             // 페어 마커도 삭제
-            if (ri < leftMarkers.Count)
+            if (vi < _realMarkers.Count)
             {
-                Destroy(leftMarkers[ri]);
-                leftMarkers.RemoveAt(ri);
-                leftPoints.RemoveAt(ri);
+                Destroy(_realMarkers[vi]);
+                _realMarkers.RemoveAt(vi);
+                _realPoints.RemoveAt(vi);
             }
 
             RefreshAllColors();
@@ -290,16 +288,16 @@ public class RigidAlignmentMono : MonoBehaviour
     void SyncPairColor(int pairIndex)
     {
         Color c = GetPairColor(pairIndex);
-        if (pairIndex < leftMarkers.Count) SetMarkerColor(leftMarkers[pairIndex], c);
-        if (pairIndex < rightMarkers.Count) SetMarkerColor(rightMarkers[pairIndex], c);
+        if (pairIndex < _realMarkers.Count) SetMarkerColor(_realMarkers[pairIndex], c);
+        if (pairIndex < _virtualMarkers.Count) SetMarkerColor(_virtualMarkers[pairIndex], c);
     }
 
     void RefreshAllColors()
     {
-        for (int i = 0; i < leftMarkers.Count; i++)
-            SetMarkerColor(leftMarkers[i], GetPairColor(i));
-        for (int i = 0; i < rightMarkers.Count; i++)
-            SetMarkerColor(rightMarkers[i], GetPairColor(i));
+        for (int i = 0; i < _realMarkers.Count; i++)
+            SetMarkerColor(_realMarkers[i], GetPairColor(i));
+        for (int i = 0; i < _virtualMarkers.Count; i++)
+            SetMarkerColor(_virtualMarkers[i], GetPairColor(i));
     }
 
     void EnableMarkerCollider(GameObject marker)
@@ -312,9 +310,9 @@ public class RigidAlignmentMono : MonoBehaviour
 
     void TryAlign()
     {
-        if (leftPoints.Count >= 3 && rightPoints.Count >= 3)
+        if (_realPoints.Count >= 3 && _virtualPoints.Count >= 3)
         {
-            if (solver.Solve(leftPoints, rightPoints, rightCube.localScale, out var pos, out var rot))
+            if (_solver.Solve(_realPoints, _virtualPoints, _virtualModel.localScale, out var pos, out var rot))
             {
                 EnsureClone();
                 _clone.SetActive(true);
@@ -334,8 +332,8 @@ public class RigidAlignmentMono : MonoBehaviour
     {
         if (_clone != null) return;
 
-        _clone = Instantiate(rightCube.gameObject);
-        _clone.name = rightCube.name + "_Clone";
+        _clone = Instantiate(_virtualModel.gameObject);
+        _clone.name = _virtualModel.name + "_Clone";
 
         // 자식(마커) 제거 — 비주얼만 남김
         var children = new List<Transform>();
@@ -352,13 +350,13 @@ public class RigidAlignmentMono : MonoBehaviour
     public void ResetAlignment()
     {
         // 마커 전부 삭제
-        foreach (var m in leftMarkers) Destroy(m);
-        foreach (var m in rightMarkers) Destroy(m);
+        foreach (var m in _realMarkers) Destroy(m);
+        foreach (var m in _virtualMarkers) Destroy(m);
 
-        leftPoints.Clear();
-        rightPoints.Clear();
-        leftMarkers.Clear();
-        rightMarkers.Clear();
+        _realPoints.Clear();
+        _virtualPoints.Clear();
+        _realMarkers.Clear();
+        _virtualMarkers.Clear();
 
         // Clone 삭제
         if (_clone != null)
