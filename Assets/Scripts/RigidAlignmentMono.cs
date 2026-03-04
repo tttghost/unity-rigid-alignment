@@ -78,17 +78,31 @@ public class RigidAlignmentMono : MonoBehaviour
     private bool _dragIsVirtual; // 드래그 중인 마커가 virtual쪽인지
     private bool _isDragging;
 
+    // ─── 잔차 라벨 고정 크기 ───
+    private const float LabelRefDistance = 5f;
+    private const float LabelBaseScale = 1f;
+
     void LateUpdate()
     {
-        // 잔차 라벨 빌보드 (카메라 방향으로 정렬)
+        // 잔차 라벨 빌보드 + 카메라 거리 무관 고정 크기
         if (_cam != null)
         {
-            foreach (var label in _realResidualLabels)
-                if (label != null && label.activeSelf)
-                    label.transform.forward = _cam.transform.forward;
-            foreach (var label in _virtualResidualLabels)
-                if (label != null && label.activeSelf)
-                    label.transform.forward = _cam.transform.forward;
+            UpdateLabelTransforms(_realResidualLabels);
+            UpdateLabelTransforms(_virtualResidualLabels);
+        }
+    }
+
+    void UpdateLabelTransforms(List<GameObject> labels)
+    {
+        Vector3 camPos = _cam.transform.position;
+        Vector3 camFwd = _cam.transform.forward;
+        foreach (var label in labels)
+        {
+            if (label == null || !label.activeSelf) continue;
+            label.transform.forward = camFwd;
+            float dist = Vector3.Distance(camPos, label.transform.position);
+            float scale = LabelBaseScale * (dist / LabelRefDistance);
+            label.transform.localScale = Vector3.one * scale;
         }
     }
 
