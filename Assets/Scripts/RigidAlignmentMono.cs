@@ -19,7 +19,44 @@ public class RigidAlignmentMono : MonoBehaviour
     private RigidAlignment _solver = new RigidAlignment();
 
     private GameObject _previewMarker;
-    private GameObject _clone;    private List<GameObject> _residualLabels = new();
+    private GameObject _clone;
+    private List<GameObject> _realResidualLabels = new();
+    private List<GameObject> _virtualResidualLabels = new();
+
+    // ─── 계층 정리용 부모 오브젝트 ───
+    private Transform _realMarkerRoot;
+    private Transform _virtualMarkerRoot;
+    private Transform _residualLabelRoot;
+
+    Transform RealMarkerRoot
+    {
+        get
+        {
+            if (_realMarkerRoot == null)
+                _realMarkerRoot = new GameObject("RealMarkers").transform;
+            return _realMarkerRoot;
+        }
+    }
+
+    Transform VirtualMarkerRoot
+    {
+        get
+        {
+            if (_virtualMarkerRoot == null)
+                _virtualMarkerRoot = new GameObject("VirtualMarkers").transform;
+            return _virtualMarkerRoot;
+        }
+    }
+
+    Transform ResidualLabelRoot
+    {
+        get
+        {
+            if (_residualLabelRoot == null)
+                _residualLabelRoot = new GameObject("ResidualLabels").transform;
+            return _residualLabelRoot;
+        }
+    }
     // ─── 컬러 페어링 ───
     private static readonly Color[] PairColors = new[]
     {
@@ -46,8 +83,11 @@ public class RigidAlignmentMono : MonoBehaviour
         // 잔차 라벨 빌보드 (카메라 방향으로 정렬)
         if (_cam != null)
         {
-            foreach (var label in _residualLabels)
-                if (label != null)
+            foreach (var label in _realResidualLabels)
+                if (label != null && label.activeSelf)
+                    label.transform.forward = _cam.transform.forward;
+            foreach (var label in _virtualResidualLabels)
+                if (label != null && label.activeSelf)
                     label.transform.forward = _cam.transform.forward;
         }
     }
@@ -159,7 +199,7 @@ public class RigidAlignmentMono : MonoBehaviour
         if (hit.transform == _virtualModel)
         {
             // virtual 쪽
-            var marker = Instantiate(_markerPrefab, hit.point, Quaternion.identity);
+            var marker = Instantiate(_markerPrefab, hit.point, Quaternion.identity, VirtualMarkerRoot);
             EnableMarkerCollider(marker);
             _virtualMarkers.Add(marker);
             _virtualPoints.Add(_virtualModel.InverseTransformPoint(hit.point));
@@ -171,7 +211,7 @@ public class RigidAlignmentMono : MonoBehaviour
         else
         {
             // real 쪽 (virtualModel이 아닌 모든 콜라이더)
-            var marker = Instantiate(_markerPrefab, hit.point, Quaternion.identity);
+            var marker = Instantiate(_markerPrefab, hit.point, Quaternion.identity, RealMarkerRoot);
             EnableMarkerCollider(marker);
             _realMarkers.Add(marker);
             _realPoints.Add(hit.point);
@@ -384,35 +424,51 @@ public class RigidAlignmentMono : MonoBehaviour
                 maxInlierResidual = Mathf.Max(maxInlierResidual, residuals[i]);
 
         int pairCount = Mathf.Min(_realMarkers.Count, residuals.Length);
+        pairCount = Mathf.Min(pairCount, _virtualMarkers.Count);
 
         // 풀링: 필요한 만큼 라벨 확보
-        while (_residualLabels.Count < pairCount)
-            _residualLabels.Add(CreateResidualLabelObject());
+        while (_realResidualLabels.Count < pairCount)
+            _realResidualLabels.Add(CreateResidualLabelObject());
+        while (_virtualResidualLabels.Count < pairCount)
+            _virtualResidualLabels.Add(CreateResidualLabelObject());
 
         // 기존 라벨 재사용
         for (int i = 0; i < pairCount; i++)
         {
-            var label = _residualLabels[i];
-            label.SetActive(true);
-            label.transform.position = _realMarkers[i].transform.position + Vector3.up * 0.05f;
+            bool isOutlier = outlierSet.Contains(i);
+            Color labelColor = isOutlier
+                ? new Color(0.5f, 0.5f, 0.5f, 0.6f)
+                : ResidualToColor(residuals[i], maxInlierResidual);
+            string labelText = $"{residuals[i]:F4} m";
 
-            var tmp = label.GetComponent<TextMeshPro>();
-            tmp.text = $"{residuals[i]:F4} m";
+            // Real 쪽 라벨
+            var realLabel = _realResidualLabels[i];
+            realLabel.SetActive(true);
+            realLabel.transform.position = _realMarkers[i].transform.position + Vector3.up * 0.05f;
+            var realTmp = realLabel.GetComponent<TextMeshPro>();
+            realTmp.text = labelText;
+            realTmp.color = labelColor;
 
-            if (outlierSet.Contains(i))
-                tmp.color = new Color(0.5f, 0.5f, 0.5f, 0.6f);
-            else
-                tmp.color = ResidualToColor(residuals[i], maxInlierResidual);
+            // Virtual 쪽 라벨
+            var virtualLabel = _virtualResidualLabels[i];
+            virtualLabel.SetActive(true);
+            virtualLabel.transform.position = _virtualMarkers[i].transform.position + Vector3.up * 0.05f;
+            var virtualTmp = virtualLabel.GetComponent<TextMeshPro>();
+            virtualTmp.text = labelText;
+            virtualTmp.color = labelColor;
         }
 
         // 남는 라벨 숨김
-        for (int i = pairCount; i < _residualLabels.Count; i++)
-            _residualLabels[i].SetActive(false);
+        for (int i = pairCount; i < _realResidualLabels.Count; i++)
+            _realResidualLabels[i].SetActive(false);
+        for (int i = pairCount; i < _virtualResidualLabels.Count; i++)
+            _virtualResidualLabels[i].SetActive(false);
     }
 
     GameObject CreateResidualLabelObject()
     {
         var go = new GameObject("ResidualLabel");
+        go.transform.SetParent(ResidualLabelRoot);
         var tmp = go.AddComponent<TextMeshPro>();
         tmp.fontSize = 2f;
         tmp.alignment = TextAlignmentOptions.Center;
@@ -434,15 +490,20 @@ public class RigidAlignmentMono : MonoBehaviour
 
     void ClearResidualLabels()
     {
-        foreach (var label in _residualLabels)
+        foreach (var label in _realResidualLabels)
+            if (label != null) label.SetActive(false);
+        foreach (var label in _virtualResidualLabels)
             if (label != null) label.SetActive(false);
     }
 
     void DestroyResidualLabels()
     {
-        foreach (var label in _residualLabels)
+        foreach (var label in _realResidualLabels)
             if (label != null) Destroy(label);
-        _residualLabels.Clear();
+        _realResidualLabels.Clear();
+        foreach (var label in _virtualResidualLabels)
+            if (label != null) Destroy(label);
+        _virtualResidualLabels.Clear();
     }
 
     void EnsureClone()
@@ -507,5 +568,10 @@ public class RigidAlignmentMono : MonoBehaviour
             Destroy(_previewMarker);
             _previewMarker = null;
         }
+
+        // 계층 부모 오브젝트 삭제
+        if (_realMarkerRoot != null) { Destroy(_realMarkerRoot.gameObject); _realMarkerRoot = null; }
+        if (_virtualMarkerRoot != null) { Destroy(_virtualMarkerRoot.gameObject); _virtualMarkerRoot = null; }
+        if (_residualLabelRoot != null) { Destroy(_residualLabelRoot.gameObject); _residualLabelRoot = null; }
     }
 }
