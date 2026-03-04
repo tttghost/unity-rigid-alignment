@@ -68,17 +68,6 @@ public class RigidAlignmentMono : MonoBehaviour
         }
     }
 
-    void CounterScaleMarker(Transform marker, Transform parent)
-    {
-        Vector3 originalScale = markerPrefab.transform.localScale;
-        Vector3 parentScale = parent.lossyScale;
-        marker.localScale = new Vector3(
-            originalScale.x / parentScale.x,
-            originalScale.y / parentScale.y,
-            originalScale.z / parentScale.z
-        );
-    }
-
     void HandleClick()
     {
         Ray ray = cam.ScreenPointToRay(Input.mousePosition);
@@ -111,16 +100,14 @@ public class RigidAlignmentMono : MonoBehaviour
 
             if (hit.transform == leftCube)
             {
-                var marker = Instantiate(markerPrefab, p, Quaternion.identity, leftCube);
-                CounterScaleMarker(marker.transform, leftCube);
+                var marker = Instantiate(markerPrefab, p, Quaternion.identity);
                 EnableMarkerCollider(marker);
                 leftMarkers.Add(marker);
                 leftPoints.Add(p);
             }
             else if (hit.transform == rightCube)
             {
-                var marker = Instantiate(markerPrefab, p, Quaternion.identity, rightCube);
-                CounterScaleMarker(marker.transform, rightCube);
+                var marker = Instantiate(markerPrefab, p, Quaternion.identity);
                 EnableMarkerCollider(marker);
                 rightMarkers.Add(marker);
                 rightPoints.Add(rightCube.InverseTransformPoint(p));
@@ -190,16 +177,8 @@ public class RigidAlignmentMono : MonoBehaviour
         }
 
         // 마커 전부 삭제
-        foreach (Transform child in leftCube)
-        {
-            if (child.gameObject != leftCube.gameObject)
-                Destroy(child.gameObject);
-        }
-        foreach (Transform child in rightCube)
-        {
-            if (child.gameObject != rightCube.gameObject)
-                Destroy(child.gameObject);
-        }
+        foreach (var m in leftMarkers) Destroy(m);
+        foreach (var m in rightMarkers) Destroy(m);
 
         if (_previewMarker != null)
         {
