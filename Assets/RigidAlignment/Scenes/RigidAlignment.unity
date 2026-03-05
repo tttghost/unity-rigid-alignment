@@ -492,6 +492,58 @@ Transform:
   - {fileID: 1140739616}
   m_Father: {fileID: 1642338250}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &386929278
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 386929280}
+  - component: {fileID: 386929279}
+  m_Layer: 0
+  m_Name: AlignmentController
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &386929279
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 386929278}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 67fa0e45c7f9fb44d928b6dfccc9c054, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _cam: {fileID: 503842309}
+  _virtualModel: {fileID: 794632040}
+  _markerPrefab: {fileID: 2961921411628161374, guid: c9bd3f9f2eb6abe4e9cc11f19ff46bd8, type: 3}
+  _cloneMaterial: {fileID: 2100000, guid: 228252eb8ad8cf44db370c5fa811b2cc, type: 2}
+  _rmseText: {fileID: 1415159715}
+  _residualLabelMaterial: {fileID: 2100000, guid: 9ad269c99dcf42b7aedefd83dd5a7b9d, type: 2}
+  _markerScale: 0.2
+  _labelScale: 1
+--- !u!4 &386929280
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 386929278}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &433486127
 GameObject:
   m_ObjectHideFlags: 0
@@ -2205,7 +2257,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &1938331443
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2392,5 +2444,6 @@ SceneRoots:
   - {fileID: 1676609762}
   - {fileID: 131050227}
   - {fileID: 447362927}
+  - {fileID: 386929280}
   - {fileID: 1938331444}
   - {fileID: 1105103655}
