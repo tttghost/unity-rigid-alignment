@@ -62,5 +62,5 @@
 - [x] AlignmentVisualizer 분리 (Clone, RMSE, 잔차 라벨 풀링/빌보드)
 - [x] AlignmentController 오케스트레이터 작성 (RigidAlignmentMono 대체)
 - [x] RigidAlignment.Solve 파라미터 IReadOnlyList<Vector3>로 확장
-- [ ] 씬 연결: RigidAlignmentMono → AlignmentController 교체 후 동작 검증
-- [ ] RigidAlignmentMono 삭제 (AlignmentController 검증 완료 후)
+- [x] 씬 연결: RigidAlignmentMono → AlignmentController 교체 후 동작 검증
+- [x] RigidAlignmentMono 삭제 (AlignmentController 검증 완료)
