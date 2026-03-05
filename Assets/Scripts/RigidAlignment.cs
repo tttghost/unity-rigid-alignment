@@ -12,8 +12,8 @@ public class RigidAlignment
     /// 아웃라이어 제거 후 정합. outlierIndices에 제외된 페어 인덱스, residuals에 전체 잔차 배열 반환.
     /// </summary>
     public bool Solve(
-        List<Vector3> realPoints,
-        List<Vector3> virtualPoints,
+        IReadOnlyList<Vector3> realPoints,
+        IReadOnlyList<Vector3> virtualPoints,
         Vector3 virtualScale,
         out Vector3 position,
         out Quaternion rotation,
@@ -34,7 +34,8 @@ public class RigidAlignment
         var activeIndices = new List<int>();
         for (int i = 0; i < n; i++) activeIndices.Add(i);
 
-        var realArr = new List<Vector3>(realPoints.GetRange(0, n));
+        var realArr = new List<Vector3>(n);
+        for (int i = 0; i < n; i++) realArr.Add(realPoints[i]);
         var virtualArr = new List<Vector3>();
         for (int i = 0; i < n; i++)
             virtualArr.Add(Vector3.Scale(virtualPoints[i], virtualScale));
@@ -145,8 +146,8 @@ public class RigidAlignment
     /// 하위호환: 잔차 배열 없이 호출
     /// </summary>
     public bool Solve(
-        List<Vector3> realPoints,
-        List<Vector3> virtualPoints,
+        IReadOnlyList<Vector3> realPoints,
+        IReadOnlyList<Vector3> virtualPoints,
         Vector3 virtualScale,
         out Vector3 position,
         out Quaternion rotation,
@@ -163,8 +164,8 @@ public class RigidAlignment
     /// 하위호환: 아웃라이어 정보 없이 호출
     /// </summary>
     public bool Solve(
-        List<Vector3> realPoints,
-        List<Vector3> virtualPoints,
+        IReadOnlyList<Vector3> realPoints,
+        IReadOnlyList<Vector3> virtualPoints,
         Vector3 virtualScale,
         out Vector3 position,
         out Quaternion rotation)
