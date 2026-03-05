@@ -54,5 +54,13 @@
 - [ ] 다중 모델 정합 (여러 가상 모델 독립 정합)
 - [ ] iPad ARKit 연동 (AR Foundation + 실환경 스캔 메시)
 
-### 코드 품질
-- [ ] 클래스 분해 리팩토링 (MarkerManager, DragHandler, AlignmentVisualizer)
+### 코드 품질 / 아키텍처
+- [x] 인터페이스 추상화 (IInputProvider, ISurfaceProvider + SurfaceHitResult)
+- [x] ScreenInputProvider 구현 (마우스/터치 공용, Old Input System)
+- [x] SceneSurfaceProvider 구현 (Physics.Raycast + Transform 비교)
+- [x] MarkerManager 분리 (CRUD, 컬러 페어링, 프리뷰, 고정 크기 스케일링)
+- [x] AlignmentVisualizer 분리 (Clone, RMSE, 잔차 라벨 풀링/빌보드)
+- [x] AlignmentController 오케스트레이터 작성 (RigidAlignmentMono 대체)
+- [x] RigidAlignment.Solve 파라미터 IReadOnlyList<Vector3>로 확장
+- [ ] 씬 연결: RigidAlignmentMono → AlignmentController 교체 후 동작 검증
+- [ ] RigidAlignmentMono 삭제 (AlignmentController 검증 완료 후)
