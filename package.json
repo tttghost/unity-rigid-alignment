@@ -1,12 +1,7 @@
 {
-  "config": {
-    "pkg": "Packages/com.tttghost.unity-rigid-alignment"
-  },
   "scripts": {
-    "release:patch": "npm version patch --no-git-tag-version --prefix $npm_package_config_pkg && git add $npm_package_config_pkg/package.json && git commit -m \"release patch\" && git tag v$(node -p \"require('./$npm_package_config_pkg/package.json').version\") && git push origin master && git push origin --tags",
-
-    "release:minor": "npm version minor --no-git-tag-version --prefix $npm_package_config_pkg && git add $npm_package_config_pkg/package.json && git commit -m \"release minor\" && git tag v$(node -p \"require('./$npm_package_config_pkg/package.json').version\") && git push origin master && git push origin --tags",
-
-    "release:major": "npm version major --no-git-tag-version --prefix $npm_package_config_pkg && git add $npm_package_config_pkg/package.json && git commit -m \"release major\" && git tag v$(node -p \"require('./$npm_package_config_pkg/package.json').version\") && git push origin master && git push origin --tags"
+    "patch": "bash -c \"npm version patch --no-git-tag-version --prefix Packages/com.tttghost.unity-rigid-alignment && VERSION=$(node -p 'require(\\\"./Packages/com.tttghost.unity-rigid-alignment/package.json\\\").version') && git add Packages/com.tttghost.unity-rigid-alignment/package.json && git commit -m 'release v'$VERSION && git tag -f v$VERSION && git push origin HEAD && git push origin v$VERSION\"",
+    "minor": "bash -c \"npm version minor --no-git-tag-version --prefix Packages/com.tttghost.unity-rigid-alignment && VERSION=$(node -p 'require(\\\"./Packages/com.tttghost.unity-rigid-alignment/package.json\\\").version') && git add Packages/com.tttghost.unity-rigid-alignment/package.json && git commit -m 'release v'$VERSION && git tag -f v$VERSION && git push origin HEAD && git push origin v$VERSION\"",
+    "major": "bash -c \"npm version major --no-git-tag-version --prefix Packages/com.tttghost.unity-rigid-alignment && VERSION=$(node -p 'require(\\\"./Packages/com.tttghost.unity-rigid-alignment/package.json\\\").version') && git add Packages/com.tttghost.unity-rigid-alignment/package.json && git commit -m 'release v'$VERSION && git tag -f v$VERSION && git push origin HEAD && git push origin v$VERSION\""
   }
 }

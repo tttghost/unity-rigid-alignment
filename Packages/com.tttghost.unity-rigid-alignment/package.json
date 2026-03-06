@@ -17,5 +17,12 @@
   ],
   "author": {
     "name": "tttghost"
-  }
+  },
+  "samples": [
+    {
+      "displayName": "PC Demo",
+      "description": "Desktop 환경에서 Rigid Alignment를 테스트하는 샘플 씬입니다.",
+      "path": "Samples~/PC Demo"
+    }
+  ]
 }
