@@ -296,6 +296,14 @@
         "com.virnect.typedescriptor": "0.0.2"
       }
     },
+    "com.virnect.rigid-alignment": {
+      "version": "file:src",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {
+        "com.unity.ugui": "2.0.0"
+      }
+    },
     "com.virnect.typedescriptor": {
       "version": "0.0.2",
       "depth": 1,

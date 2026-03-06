@@ -3,6 +3,7 @@
   <Project Path="TransformGizmo.csproj" />
   <Project Path="RuntimeSceneGizmo.Runtime.csproj" />
   <Project Path="VirnectAR.csproj" />
+  <Project Path="Virnect.RigidAlignment.csproj" />
   <Project Path="Assembly-CSharp-Editor.csproj" />
   <Project Path="VirnectAR.Editor.csproj" />
 </Solution>
