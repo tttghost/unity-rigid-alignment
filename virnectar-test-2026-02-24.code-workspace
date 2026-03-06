@@ -4,9 +4,6 @@
 			"path": "."
 		},
 		{
-			"path": "../../project-common/UnityCommonPackage/VirnectAR"
-		},
-		{
 			"path": "Packages/src"
 		}
 	],

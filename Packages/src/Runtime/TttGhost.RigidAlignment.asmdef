@@ -1,6 +1,6 @@
 {
-  "name": "Virnect.RigidAlignment",
-  "rootNamespace": "Virnect.RigidAlignment",
+  "name": "TttGhost.RigidAlignment",
+  "rootNamespace": "TttGhost.RigidAlignment",
   "references": [
     "Unity.TextMeshPro"
   ],
