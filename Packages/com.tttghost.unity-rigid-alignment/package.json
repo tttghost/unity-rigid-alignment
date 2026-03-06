@@ -1,6 +1,6 @@
 {
   "name": "com.tttghost.unity-rigid-alignment",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "displayName": "Unity Rigid Alignment",
   "description": "SVD Kabsch 기반 Rigid Alignment (3D 정합) 패키지. 실측 마커쌍으로 최적 회전·이동을 계산하고 가상 모델을 현실에 정렬합니다.",
   "unity": "6000.0",
