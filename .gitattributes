@@ -1,3 +1,4 @@
+## Unity LFS
 *.fbx filter=lfs diff=lfs merge=lfs binary
 *.dae filter=lfs diff=lfs merge=lfs binary
 *.png filter=lfs diff=lfs merge=lfs binary
@@ -8,4 +9,3 @@
 *.blend filter=lfs diff=lfs merge=lfs binary
 *.pdf filter=lfs diff=lfs merge=lfs binary
 *.psd filter=lfs diff=lfs merge=lfs binary
-Exports/WebGL/space-koreadtech-prototype_0 filter=lfs diff=lfs merge=lfs -text
