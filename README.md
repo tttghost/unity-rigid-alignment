@@ -23,7 +23,7 @@ Real 모델(스캔/실물)과 Virtual 모델(CAD) 사이에 대응점(마커)을
 ## 프로젝트 구조
 
 ```
-Packages/src/                              ← UPM 패키지 (com.tttghost.rigid-alignment v0.1.0)
+Packages/unity-rigid-alignment/                              ← UPM 패키지 (com.tttghost.rigid-alignment v0.1.0)
 ├── package.json
 └── Runtime/
     ├── TttGhost.RigidAlignment.asmdef

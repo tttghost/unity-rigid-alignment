@@ -5,9 +5,9 @@
 - Real 모델(스캔/실물)과 Virtual 모델(CAD) 사이의 대응점(마커)을 찍어 정합
 - GitHub: `tttghost/unity-rigid-alignment` (private)
 
-## UPM 패키지 구조 (Packages/src/)
+## UPM 패키지 구조 (Packages/unity-rigid-alignment/)
 ```
-Packages/src/                          ← com.tttghost.rigid-alignment v0.1.0
+Packages/unity-rigid-alignment/                          ← com.tttghost.unityrigidalignment
 ├── package.json
 └── Runtime/
     ├── TttGhost.RigidAlignment.asmdef
@@ -47,7 +47,7 @@ Packages/src/                          ← com.tttghost.rigid-alignment v0.1.0
 
 ## 이전 대화 히스토리 요약 (40턴+, 2/25~3/6)
 ### 세션 2 (3/6)
-- Assets/Scripts/ → Packages/src/Runtime/ 패키지 이동 완료
+- Assets/Scripts/ → Packages/unity-rigid-alignment/Runtime/ 패키지 이동 완료
 - README.md, CONTEXT.md 구조 갱신
 
 ### 세션 1 (2/25~3/5, 40턴)
@@ -63,4 +63,4 @@ Packages/src/                          ← com.tttghost.rigid-alignment v0.1.0
 ## 주의사항
 - 코드에 TODO/FIXME 없음 (깨끗한 상태)
 - Old Input System 사용 중
-- 핵심 코드는 Packages/src/Runtime/ 에 위치 (Assets/Scripts/ 아님)
+- 핵심 코드는 Packages/unity-rigid-alignment/Runtime/ 에 위치 (Assets/Scripts/ 아님)
