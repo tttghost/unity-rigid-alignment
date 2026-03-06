@@ -1,24 +1,31 @@
-# Rigid Alignment POC — 프로젝트 컨텍스트
+# Rigid Alignment — 프로젝트 컨텍스트
 
 ## 개요
-- Unity 기반 Rigid Alignment(강체 정합) POC
+- Unity 6 기반 Rigid Alignment(강체 정합) 독립 패키지
 - Real 모델(스캔/실물)과 Virtual 모델(CAD) 사이의 대응점(마커)을 찍어 정합
-- POC 성과를 VirnectAR 패키지(AutoAlignment, InitialAlignment, ManualAlignment)로 통합 예정
+- GitHub: `tttghost/unity-rigid-alignment` (private)
 
-## 워크스페이스 구조
-- `virnectar-test-2026-02-24/` — POC 프로젝트 (Unity)
-- `VirnectAR/` — 공용 패키지 (Module/ 하위에 빈 AutoAlignment, InitialAlignment, ManualAlignment 폴더 존재)
+## UPM 패키지 구조 (Packages/src/)
+```
+Packages/src/                          ← com.tttghost.rigid-alignment v0.1.0
+├── package.json
+└── Runtime/
+    ├── TttGhost.RigidAlignment.asmdef
+    ├── AlignmentController.cs         ← 오케스트레이터
+    ├── AlignmentVisualizer.cs         ← 시각화 (Clone, RMSE, 잔차)
+    ├── MarkerManager.cs               ← 마커 CRUD, 8색, 프리뷰
+    ├── RigidAlignment.cs              ← SVD Kabsch 솔버
+    ├── Interfaces/
+    │   ├── IInputProvider.cs
+    │   └── ISurfaceProvider.cs
+    └── Implementations/
+        ├── ScreenInputProvider.cs
+        └── SceneSurfaceProvider.cs
+```
 
-## 핵심 클래스 (Assets/Scripts/)
-| 클래스 | 역할 |
-|--------|------|
-| AlignmentController | 오케스트레이터 (Input→Surface→Marker→Solve→Visualize) |
-| RigidAlignment | SVD Kabsch 솔버 (아웃라이어 제거, IRLS 가중) |
-| MarkerManager | 마커 CRUD, 8색 페어링, 프리뷰, 고정크기 |
-| AlignmentVisualizer | Clone, RMSE, 잔차 라벨 풀링/빌보드 |
-| IInputProvider / ScreenInputProvider | 입력 추상화 (마우스/터치) |
-| ISurfaceProvider / SceneSurfaceProvider | 표면 레이캐스트 추상화 |
-| ARTapToAnchor | iPad ARKit 테스트용 |
+## Assets/ (프로젝트 전용, 패키지에 포함 안 됨)
+- `Scripts/AR/ARTapToAnchor.cs` — iPad ARKit 테스트
+- `RigidAlignment/` — 씬, 모델, 매터리얼, 프리팹
 
 ## 알고리즘 핵심
 - Kabsch (SVD): U·V^T 회전행렬 (V·U^T 아님 — 이전 버그 수정)
