@@ -1,0 +1,7 @@
+{
+  "scripts": {
+    "release:patch": "npm version patch --prefix Packages/com.tttghost.unity-rigid-alignment && git push origin --tags",
+    "release:minor": "npm version minor --prefix Packages/com.tttghost.unity-rigid-alignment && git push origin --tags",
+    "release:major": "npm version major --prefix Packages/com.tttghost.unity-rigid-alignment && git push origin --tags"
+  }
+}
