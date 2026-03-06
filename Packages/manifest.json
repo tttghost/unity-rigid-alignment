@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "com.tttghost.rigid-alignment": "file:src",
+    "com.tttghost.unity-rigid-alignment": "file:com.tttghost.unity-rigid-alignment",
     "com.unity.ai.navigation": "2.0.9",
     "com.unity.collab-proxy": "2.10.0",
     "com.unity.ide.rider": "3.0.38",

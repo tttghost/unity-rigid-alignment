@@ -1,7 +1,7 @@
 {
   "dependencies": {
-    "com.tttghost.rigid-alignment": {
-      "version": "file:unity-rigid-alignment",
+    "com.tttghost.unity-rigid-alignment": {
+      "version": "file:com.tttghost.unity-rigid-alignment",
       "depth": 0,
       "source": "embedded",
       "dependencies": {
