@@ -23,28 +23,32 @@ Real 모델(스캔/실물)과 Virtual 모델(CAD) 사이에 대응점(마커)을
 ## 프로젝트 구조
 
 ```
-Assets/
-├── Scripts/
-│   ├── AlignmentController.cs    # 오케스트레이터
-│   ├── RigidAlignment.cs         # SVD Kabsch 솔버
-│   ├── MarkerManager.cs          # 마커 CRUD/페어링/프리뷰
-│   ├── AlignmentVisualizer.cs    # Clone/RMSE/잔차 라벨
-│   ├── Interfaces/
-│   │   ├── IInputProvider.cs     # 입력 추상화
-│   │   └── ISurfaceProvider.cs   # 표면 레이캐스트 추상화
-│   ├── Implementations/
-│   │   ├── ScreenInputProvider.cs    # 마우스/터치
-│   │   └── SceneSurfaceProvider.cs   # Physics.Raycast
-│   └── AR/
-│       └── ARTapToAnchor.cs      # iPad ARKit 앵커 테스트
+Packages/src/                              ← UPM 패키지 (com.tttghost.rigid-alignment v0.1.0)
+├── package.json
+└── Runtime/
+    ├── TttGhost.RigidAlignment.asmdef
+    ├── AlignmentController.cs             # 오케스트레이터
+    ├── RigidAlignment.cs                  # SVD Kabsch 솔버
+    ├── MarkerManager.cs                   # 마커 CRUD/페어링/프리뷰
+    ├── AlignmentVisualizer.cs             # Clone/RMSE/잔차 라벨
+    ├── Interfaces/
+    │   ├── IInputProvider.cs              # 입력 추상화
+    │   └── ISurfaceProvider.cs            # 표면 레이캐스트 추상화
+    └── Implementations/
+        ├── ScreenInputProvider.cs         # 마우스/터치
+        └── SceneSurfaceProvider.cs        # Physics.Raycast
+
+Assets/                                    ← 프로젝트 전용 (패키지 미포함)
+├── Scripts/AR/
+│   └── ARTapToAnchor.cs                   # iPad ARKit 앵커 테스트
 └── RigidAlignment/
     ├── Materials/
     ├── Models/
     ├── Prefabs/
     └── Scenes/
-        ├── RigidAlignment-PC.unity       # PC/에디터용
-        ├── RigidAlignment-iOS.unity      # iPad AR용
-        └── RigidAlignment-iOS-Test.unity # iPad AR 테스트용
+        ├── RigidAlignment-PC.unity        # PC/에디터용
+        ├── RigidAlignment-iOS.unity       # iPad AR용
+        └── RigidAlignment-iOS-Test.unity  # iPad AR 테스트용
 ```
 
 ## 사용 방법

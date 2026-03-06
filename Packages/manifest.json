@@ -15,7 +15,6 @@
     "com.unity.xr.arcore": "6.0.6",
     "com.unity.xr.arfoundation": "6.0.6",
     "com.unity.xr.arkit": "6.0.6",
-
     "com.unity.modules.accessibility": "1.0.0",
     "com.unity.modules.ai": "1.0.0",
     "com.unity.modules.androidjni": "1.0.0",
@@ -49,13 +48,5 @@
     "com.unity.modules.wind": "1.0.0",
     "com.unity.modules.xr": "1.0.0"
   },
-  "scopedRegistries": [
-    {
-      "name": "virnect",
-      "url": "http://192.168.0.210:4873",
-      "scopes": [
-        "com.virnect"
-      ]
-    }
-  ]
+  "scopedRegistries": []
 }

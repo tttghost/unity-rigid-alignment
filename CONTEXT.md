@@ -45,7 +45,12 @@ Packages/src/                          ← com.tttghost.rigid-alignment v0.1.0
 - RigidAlignment-PC.unity — PC용 메인
 - RigidAlignment-iOS.unity / RigidAlignment-iOS-Test.unity — iPad AR 테스트
 
-## 이전 대화 히스토리 요약 (40턴, 2/25~3/5)
+## 이전 대화 히스토리 요약 (40턴+, 2/25~3/6)
+### 세션 2 (3/6)
+- Assets/Scripts/ → Packages/src/Runtime/ 패키지 이동 완료
+- README.md, CONTEXT.md 구조 갱신
+
+### 세션 1 (2/25~3/5, 40턴)
 - 체크리스트(CHECKLIST.md) 생성 및 카테고리별 정리
 - Kabsch 회전행렬 버그 수정 (스피어/메시콜라이더 정합 실패 → V·U^T를 U·V^T로 수정)
 - 마커/라벨 고정 크기 + Inspector 배율 조절(SerializeField) 추가
@@ -58,3 +63,4 @@ Packages/src/                          ← com.tttghost.rigid-alignment v0.1.0
 ## 주의사항
 - 코드에 TODO/FIXME 없음 (깨끗한 상태)
 - Old Input System 사용 중
+- 핵심 코드는 Packages/src/Runtime/ 에 위치 (Assets/Scripts/ 아님)

@@ -1,5 +1,13 @@
 {
   "dependencies": {
+    "com.tttghost.rigid-alignment": {
+      "version": "file:src",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {
+        "com.unity.ugui": "2.0.0"
+      }
+    },
     "com.unity.ai.navigation": {
       "version": "2.0.9",
       "depth": 0,
@@ -284,50 +292,6 @@
         "com.unity.xr.legacyinputhelpers": "2.1.11"
       },
       "url": "https://packages.unity.com"
-    },
-    "com.virnect.ar": {
-      "version": "file:D:/github/virnect/project-common/UnityCommonPackage/VirnectAR",
-      "depth": 0,
-      "source": "local",
-      "dependencies": {
-        "com.unity.xr.arfoundation": "6.0.1",
-        "com.virnect.virnectcommonui": "0.0.17",
-        "com.virnect.virnectcommonui_uitoolkit": "0.0.53",
-        "com.virnect.typedescriptor": "0.0.2"
-      }
-    },
-    "com.virnect.rigid-alignment": {
-      "version": "file:src",
-      "depth": 0,
-      "source": "embedded",
-      "dependencies": {
-        "com.unity.ugui": "2.0.0"
-      }
-    },
-    "com.virnect.typedescriptor": {
-      "version": "0.0.2",
-      "depth": 1,
-      "source": "registry",
-      "dependencies": {},
-      "url": "http://192.168.0.210:4873"
-    },
-    "com.virnect.virnectcommonui": {
-      "version": "0.0.17",
-      "depth": 1,
-      "source": "registry",
-      "dependencies": {},
-      "url": "http://192.168.0.210:4873"
-    },
-    "com.virnect.virnectcommonui_uitoolkit": {
-      "version": "0.0.54",
-      "depth": 0,
-      "source": "registry",
-      "dependencies": {
-        "com.unity.modules.uielements": "1.0.0",
-        "com.virnect.virnectcommonui": "0.0.2",
-        "com.virnect.typedescriptor": "0.0.2"
-      },
-      "url": "http://192.168.0.210:4873"
     },
     "com.unity.modules.accessibility": {
       "version": "1.0.0",
