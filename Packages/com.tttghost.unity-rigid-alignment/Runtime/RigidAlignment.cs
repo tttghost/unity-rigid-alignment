@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+
 /// <summary>
 /// N점(N≥3) Kabsch 알고리즘 기반 rigid alignment.
 /// SVD를 통해 최소자승 최적 회전·이동을 계산한다.
