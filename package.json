@@ -1,7 +1,0 @@
-{
-  "scripts": {
-    "release:patch": "cd Packages/com.tttghost.unity-rigid-alignment && npm version patch && cd ../../ && git push origin master --tags",
-    "release:minor": "cd Packages/com.tttghost.unity-rigid-alignment && npm version minor && cd ../../ && git push origin master --tags",
-    "release:major": "cd Packages/com.tttghost.unity-rigid-alignment && npm version major && cd ../../ && git push master --tags"
-  }
-}
